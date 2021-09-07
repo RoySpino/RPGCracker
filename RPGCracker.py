@@ -11,6 +11,7 @@ gblInLineDeclare = []
 gblIndent = ""
 gblProgramName = ""
 gblSQLBlock = {"": ""}
+gblMVRStr = ""
 
 def clearFile(path):
     f = open(path, 'w')
@@ -153,6 +154,41 @@ def subDurTranslate(fact1, fact2, result):
         #on result operation returns an integer
         arr = result.split(":")
         return "{0} = %diff({1}:{2}:{3});\n".format(arr[0], fact1, fact2, arr[1])
+
+# /////////////////////////////////////////////////////////////////////////
+def mathOperation(op, fact1, fact2, result, HI, LO, EQ):
+    global gblMVRStr
+
+    oper = {"DIV":"/", "MULT":"*", "ADD":"+", "SUB":"-",
+            "DIV(H)":"/", "MULT(H)":"*", "ADD(H)":"+", "SUB(H)":"-"}
+    ret = ""
+
+    if fact1 != "":
+        ret += "{0} = {1} {2} {3};\n".format(result, fact1, oper[op], fact2)
+    else:
+        ret += "{0} {2}= {1};\n".format(result, oper[op], fact2)
+
+    if HI != "":
+        ret += "*in{0} = ({1} > 0);\n".format(itmArr[4], itmArr[1])
+    if LO != "":
+        ret += "*in{0} = ({1} < 0);\n".format(itmArr[5], itmArr[1])
+    if EQ != "":
+        ret += "*in{0} =({1} = 0);\n".format(itmArr[6], itmArr[1])
+
+    # assign MVR value
+    if op == "DIV":
+        if fact1 != "":
+            gblMVRStr = "%rem({0}: {1});\n".format(fact1, fact2)
+        else:
+            gblMVRStr = "%rem({0}: {1});\n".format(result, fact2)
+
+    # return new freeformat math operaton
+    return ret
+
+# /////////////////////////////////////////////////////////////////////////
+def mvrToBIF(result):
+    global gblMVRStr
+    return  "{0} = {1}".format(result, gblMVRStr)
 
 # /////////////////////////////////////////////////////////////////////////
 def cLineBreaker(line):
@@ -358,7 +394,6 @@ def cComposer(itmArr, originalLine):
     global gblProcedureDivision
     global gblIndent
     
-    OPERATOR = {"MULT":"*","DIV":"/","ADD":"+","SUB":"-", "MULT(H)":"*","DIV(H)":"/","ADD(H)":"+","SUB(H)":"-"}
     COMPARITOR = {"LE":"<=","GE":">=","LT":"<","GT":">","EQ":"=","NE":"<>"}
     OnConditinalLine = False
     doAddIndent = False
@@ -390,6 +425,8 @@ def cComposer(itmArr, originalLine):
         return
 
     #[Opcode, result, fact1, fact2, hi, lo, eq]
+    if itmArr[0] == "MVR":
+        outputLine += mvrToBIF(itmArr[1])
     if itmArr[0] == "LEAVESR":
         outputLine += "return;\n"
     if itmArr[0] == "LEAVE":
@@ -444,18 +481,9 @@ def cComposer(itmArr, originalLine):
     if "Z-SUB" in itmArr[0]:
         outputLine += "{0} = (-1 * {1});\n".format(itmArr[1], itmArr[3])
     if itmArr[0] == "ADD" or itmArr[0] == "SUB" or itmArr[0] == "DIV" or itmArr[0] == "MULT" or itmArr[0] == "ADD(H)" or itmArr[0] == "SUB(H)" or itmArr[0] == "DIV(H)" or itmArr[0] == "MULT(H)":
-        if itmArr[2] != "":
-            outputLine += "{0} = {1} {3} {2};\n".format(itmArr[1], itmArr[2], itmArr[3], OPERATOR[itmArr[0]])
-        else:
-            outputLine += "{0} {2}= {1};\n".format(itmArr[1], itmArr[3], OPERATOR[itmArr[0]])
-        if itmArr[4] != "":
-            outputLine += "*in{0} = ({1} > 0);\n".format(itmArr[4], itmArr[1])
-        if itmArr[5] != "":
-            outputLine += "*in{0} = ({1} < 0);\n".format(itmArr[5], itmArr[1])
-        if itmArr[6] != "":
-            outputLine += "*in{0} =({1} = 0);\n".format(itmArr[6], itmArr[1])
+        outputLine += mathOperation(itmArr[0], itmArr[2], itmArr[3], itmArr[1], itmArr[4], itmArr[5],itmArr[6])
     if itmArr[0] == "MOVEL":
-        outputLine += "{0} {1} = {2}\n".format(itmArr[0], itmArr[1], itmArr[3])
+        outputLine += "// MOVEL Operation: check type before adding spaces/zeros\n{0} {1} = {2}\n".format(itmArr[0], itmArr[1], itmArr[3])
     if itmArr[0] == "EXSR":
         outputLine += "{0}();\n".format(itmArr[3])
     if itmArr[0] == "SETON" or itmArr[0] == "SETOFF":
@@ -542,14 +570,21 @@ def cComposer(itmArr, originalLine):
         gblIndent = gblIndent[4:]
 
     # unable to compose line return original RPG line
-    if outputLine == "":
+    if outputLine.strip == "":
         print(originalLine)
         # comment out compiller directive
         if "/SPACE" in originalLine:
             outputLine = "/{0}\n".format(originalLine)
         else:
-            outputLine = originalLine + "\n"
+            # chekc if line has been commented out
+            if len(originalLine) > 3:
+                if originalLine[1] == "*":
+                    outputLine = "//{0}\n".format(originalLine)
+            else:
+                # nothing to do just print the line
+                outputLine = originalLine + "\n"
     else:
+        # on sql operation
         if originalLine[1] == '~':
             outputLine = gblSQLBlock[originalLine[1:].strip()] + "\n"
         else:
@@ -658,6 +693,7 @@ def rectifier(lines):
     spec = ""
     Espec = ""
     Ospec = ""
+    ret = ""
     arr = []
 
     for lin in lines:
@@ -665,7 +701,7 @@ def rectifier(lines):
 
         spec = lin[0: 1]
 
-        # do nothon on these conditions
+        # do nothing on these conditions
         if len(lin) < 2:
             continue
         if lin[1] == "*":
@@ -693,7 +729,13 @@ def rectifier(lines):
                 
     
     # combine RPG divisions into final program
-    return "**free\n" + gblFileDivision + gblDataDivision + gblProcedureDivision
+    ret = "**free\n" + gblFileDivision + gblDataDivision + gblProcedureDivision
+
+    #final cleanup replace any rpg style comments to C style comments
+    if "\n*" in ret:
+        ret = ret.replace("\n*","\n//")
+
+    return ret
 
 # /////////////////////////////////////////////////////////////////////////
 # go through sorce to get all Klists 
