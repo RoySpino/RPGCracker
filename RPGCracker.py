@@ -731,9 +731,14 @@ def rectifier(lines):
     # combine RPG divisions into final program
     ret = "**free\n" + gblFileDivision + gblDataDivision + gblProcedureDivision
 
-    #final cleanup replace any rpg style comments to C style comments
+    # final cleanup section
+    # replace any rpg style comments to C style comments
     if "\n*" in ret:
         ret = ret.replace("\n*","\n//")
+
+    # fix any indicators that where commented by mistake
+    if "\n//in" in ret:
+        ret = ret.replace("\n//in","\n*in")
 
     return ret
 
