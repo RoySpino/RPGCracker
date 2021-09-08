@@ -166,7 +166,7 @@ def mathOperation(op, fact1, fact2, result, HI, LO, EQ):
     if fact1 != "":
         ret += "{0} = {1} {2} {3};\n".format(result, fact1, oper[op], fact2)
     else:
-        ret += "{0} {2}= {1};\n".format(result, oper[op], fact2)
+        ret += "{0} {1}= {2};\n".format(result, oper[op], fact2)
 
     if HI != "":
         ret += "*in{0} = ({1} > 0);\n".format(itmArr[4], itmArr[1])
