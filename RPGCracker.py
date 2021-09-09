@@ -776,8 +776,8 @@ def setup(lines):
         fact2 = lin[30:44].strip()
 
         # dynamic result variable declaration
-        Len = lin[58:63]
-        d = lin[63:65]
+        Len = (lin[58:63]).strip()
+        d = (lin[63:65]).strip()
 
         # setup program paramiters
         if Opcode == "PLIST" and fact1 == "*ENTRY":
