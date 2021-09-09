@@ -231,11 +231,14 @@ def cLineBreaker(line):
 
     # handle do blocks
     if Opcode == "DO":
-        if (N != "" or iO1 != "") and (fact2 == "" and result == ""):
-            if N == "":
-                return ["IF", "*in{0} = *On".format(iO1)]
+        if (N != "" or iO1 != "" or L0 != "") and (fact2 == "" and result == ""):
+            if L0 == "":
+                if N == "":
+                    return ["IF", "*in{0} = *On".format(iO1)]
+                else:
+                    return ["IF", "*in{0} = *Off".format(iO1)]
             else:
-                return ["IF", "*in{0} = *Off".format(iO1)]
+                return ["IF", "*in{0} = *On".format(L0)]
         else:
             if fact2 != "" and result != "":
                 return ["FOR", "{0} to {1}".format(result, fact2)]
