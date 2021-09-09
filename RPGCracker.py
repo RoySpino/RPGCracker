@@ -397,6 +397,7 @@ def cComposer(itmArr, originalLine):
     COMPARITOR = {"LE":"<=","GE":">=","LT":"<","GT":">","EQ":"=","NE":"<>"}
     OnConditinalLine = False
     doAddIndent = False
+    doIgnoreIndent = False
     outputLine = ""
 
     # notihing to compose
@@ -425,6 +426,16 @@ def cComposer(itmArr, originalLine):
         return
 
     #[Opcode, result, fact1, fact2, hi, lo, eq]
+    # on sql operation
+    if originalLine[1] == '~':
+        outputLine = gblSQLBlock[originalLine[1:].strip()] + "\n"
+    # comment out compiller directive
+    if "/SPACE" in originalLine:
+        outputLine = "// {0}\n".format(originalLine)
+        doIgnoreIndent = True
+    if itmArr[0] == "END":
+        outputLine += "{0}\n".format(originalLine)
+        doIgnoreIndent = True
     if itmArr[0] == "MVR":
         outputLine += mvrToBIF(itmArr[1])
     if itmArr[0] == "LEAVESR":
@@ -494,7 +505,7 @@ def cComposer(itmArr, originalLine):
                 else:
                     outputLine += "*in{0} = *Off;\n".format(ind)
     if itmArr[0] == "EXCEPT":
-        outputLine += "{0} {1}; // write to report format\n".format(itmArr[0], itmArr[3])
+        outputLine += "write {0}; // write to report format\n".format(itmArr[3])
     if itmArr[0] == "CALL"  or itmArr[0] == "CALLP" or itmArr[0] == "CLOSE" or itmArr[0] == "OPEN":
         outputLine += "{0} {1};\n".format(itmArr[0], itmArr[3])
     if itmArr[0] == "WRITE" or itmArr[0] == "UPDATE" or itmArr[0] == "DELETE":
@@ -571,23 +582,11 @@ def cComposer(itmArr, originalLine):
 
     # unable to compose line return original RPG line
     if outputLine.strip == "":
-        print(originalLine)
-        # comment out compiller directive
-        if "/SPACE" in originalLine:
-            outputLine = "/{0}\n".format(originalLine)
-        else:
-            # chekc if line has been commented out
-            if len(originalLine) > 3:
-                if originalLine[1] == "*":
-                    outputLine = "//{0}\n".format(originalLine)
-            else:
-                # nothing to do just print the line
-                outputLine = originalLine + "\n"
+        # nothing to do just print the line
+        outputLine = originalLine + "\n"
     else:
-        # on sql operation
-        if originalLine[1] == '~':
-            outputLine = gblSQLBlock[originalLine[1:].strip()] + "\n"
-        else:
+        # add Indent when needed
+        if doIgnoreIndent == False:
             outputLine = gblIndent + outputLine
 
     #add line to output program
