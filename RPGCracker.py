@@ -306,6 +306,7 @@ def dLineBreaker(line):
 
     lin = line.upper().strip()
     varName = lin[1: 16].strip()
+    strucTy = lin[16: 17].strip()
     fildTyp = lin[18: 21].strip()
     numFrom = lin[21: 27].strip()
     varSize = lin[27: 34].strip()
@@ -322,6 +323,13 @@ def dLineBreaker(line):
         else:
             if fildTyp == "DS":
                 decloration = "Dcl-Ds"
+
+                if strucTy != "":
+                    if strucTy == "U":
+                        decloration += " DtaAra"
+                    else:
+                        if strucTy == "S":
+                            decloration += " PSDS"
             else:
                 decloration = ""
 
@@ -351,6 +359,12 @@ def dLineBreaker(line):
                         else:
                             if varType == "S":
                                 varType = "ZONED"
+                            else:
+                                if varType == "I":
+                                    varType = "INT"
+                                else:
+                                    if varType == "F":
+                                        varType = "FLOAT"
 
 
 
@@ -658,7 +672,12 @@ def dComposer(itmArr):
                 outputLine += "{0} {1} {2}({3});\n".format(itmArr[0],itmArr[1],itmArr[2],itmArr[3])
     
     #setup data structures 
-    if itmArr[0] == "Dcl-Ds":
+    if "Dcl-Ds" in itmArr[0]:
+        #check to see if the datastructure is a program/dataArea/file status data structure
+        if itmArr[0] != "Dcl-Ds":
+            tarr = itmArr[0].split(" ")
+            itmArr[0] = tarr[0]
+            
         # at end of old data structure and start of new one
         # add a end-ds before adding a delaration
         if gblTmp == "#":
