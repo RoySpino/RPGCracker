@@ -60,6 +60,14 @@ def addCallParamList(keyName, value):
         gblParams[keyName] = [value]
 
 # /////////////////////////////////////////////////////////////////////////
+def getExternalProcCall(procName):
+    name = procName.replace("'","")
+
+    lst = getCallParamList(name)
+
+    return "{0}{1};".format(name, lst)
+
+# /////////////////////////////////////////////////////////////////////////
 def addkeyList(keyName, value):
     global gblKeys
 
@@ -92,6 +100,27 @@ def getRPG3_ComparisonOp(op):
     operand = op[len(op)-2:]
 
     return drez[operand]
+
+# /////////////////////////////////////////////////////////////////////////
+def getCallParamList(callName):
+    global gblParams
+    ret = ""
+
+    # check if call is in paramiter dicationary
+    if callName in gblParams:
+        arr = gblKeys[callName]
+
+        # format the list retreived from the dictionary
+        # and format the string for the call
+        for i in range(len(arr)):
+            if i > 0:
+                if i < (len(arr) - 1):
+                    ret += arr[i] + ": "
+                else:
+                    ret += arr[i]
+        return "(" + ret + ")"
+    
+    return "()"
 
 # /////////////////////////////////////////////////////////////////////////
 def translateIndicators(hi, lo, eq):
@@ -247,7 +276,7 @@ def cLineBreaker(line):
 
     # handl lines that dont use factor 1 and 2
     if "EVAL" in Opcode or Opcode == "IF" or Opcode == "FOR" or Opcode == "DOW" or Opcode == "DOU" or Opcode == "WHEN":
-        return [Opcode, lin[30:71].strip()]
+        return [Opcode, lin[30:75].strip()]
 
 
     #-------------------------------------------------------------------------------------------------
@@ -443,16 +472,22 @@ def cComposer(itmArr, originalLine):
         return
 
     #[Opcode, result, fact1, fact2, hi, lo, eq]
+    # comment out compiller directive
+    if "/SPACE" in originalLine:
+        gblProcedureDivision += "// {0}\n".format(originalLine)
+        return
+    if itmArr[0] == "GOTO" or itmArr[0] == "TAG":
+        gblProcedureDivision += "{0}\n".format(originalLine)
+        return
+    if itmArr[0] == "END":
+        gblIndent = gblIndent[4:]
+        gblProcedureDivision += "{0}\n".format(originalLine)
+        return
+
+
     # on sql operation
     if originalLine[1] == '~':
         outputLine = gblSQLBlock[originalLine[1:].strip()] + "\n"
-    # comment out compiller directive
-    if "/SPACE" in originalLine:
-        outputLine = "// {0}\n".format(originalLine)
-        doIgnoreIndent = True
-    if itmArr[0] == "END":
-        outputLine += "{0}\n".format(originalLine)
-        doIgnoreIndent = True
     if itmArr[0] == "MVR":
         outputLine += mvrToBIF(itmArr[1])
     if itmArr[0] == "LEAVESR":
@@ -523,8 +558,10 @@ def cComposer(itmArr, originalLine):
                     outputLine += "*in{0} = *Off;\n".format(ind)
     if itmArr[0] == "EXCEPT":
         outputLine += "write {0}; // write to report format\n".format(itmArr[3])
-    if itmArr[0] == "CALL"  or itmArr[0] == "CALLP" or itmArr[0] == "CLOSE" or itmArr[0] == "OPEN":
+    if itmArr[0] == "CLOSE" or itmArr[0] == "OPEN":
         outputLine += "{0} {1};\n".format(itmArr[0], itmArr[3])
+    if itmArr[0] == "CALL"  or itmArr[0] == "CALLP":
+        outputLine += "{0} // call to external procedure or program\n".format(getExternalProcCall(itmArr[3]))
     if itmArr[0] == "WRITE" or itmArr[0] == "UPDATE" or itmArr[0] == "DELETE":
         outputLine += "{0} {1};\n".format(itmArr[0], itmArr[3])
         if itmArr[4] != "":
@@ -750,7 +787,10 @@ def rectifier(lines):
                 
     
     # combine RPG divisions into final program
-    ret = "**free\n" + gblFileDivision + gblDataDivision + gblProcedureDivision
+    ret = ("**free\nCtl-Opt DFTACTGRP(*No);\n" + 
+          gblFileDivision + 
+          gblDataDivision + 
+          gblProcedureDivision)
 
     # final cleanup section
     # replace any rpg style comments to C style comments
