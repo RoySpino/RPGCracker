@@ -607,7 +607,7 @@ def cComposer(itmArr, originalLine):
         if itmArr[5] != "":
             outputLine += "{1}*in{0} = %error();\n".format(itmArr[5], gblIndent)
     if itmArr[0] == "CABEQ" or itmArr[0] == "CABNE" or itmArr[0] == "CABGT" or itmArr[0] == "CABLT" or itmArr[0] == "CABGE" or itmArr[0] == "CABLE":
-        outputLine += "IF {1} {3} {2};\n    {4};\nENDIF;\n".format(itmArr[0], itmArr[2], itmArr[3], COMPARITOR[itmArr[0][3:]], itmArr[1])
+        outputLine += "IF {1} {3} {2};\n{5}    {4};\n{5}ENDIF;\n".format(itmArr[0], itmArr[2], itmArr[3], COMPARITOR[itmArr[0][3:]], itmArr[1], gblIndent)
     if itmArr[0] == "XFOOT":
         outputLine += "{0} = %xfoot({1});\n".format(itmArr[1],itmArr[3])
     if itmArr[0] == "XLATE":
