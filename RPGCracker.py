@@ -12,6 +12,7 @@ gblIndent = ""
 gblProgramName = ""
 gblSQLBlock = {"": ""}
 gblMVRStr = ""
+gblGOTOLst = []
 
 def clearFile(path):
     f = open(path, 'w')
@@ -77,6 +78,14 @@ def addkeyList(keyName, value):
         gblKeys[keyName] = [value]
 
 # /////////////////////////////////////////////////////////////////////////
+def addGOTOList(TagName):
+    global gblGOTOLst
+
+    if (TagName in gblGOTOLst) == False:
+        gblGOTOLst.append(TagName)
+        print(">>>>>>>>>>>>>>>>>>> " + TagName)
+
+# /////////////////////////////////////////////////////////////////////////
 def getKeyString(keyName):
     global gblKeys
     ret = ""
@@ -97,9 +106,31 @@ def getKeyString(keyName):
 # /////////////////////////////////////////////////////////////////////////
 def getRPG3_ComparisonOp(op):
     drez = {"EQ":"=", "NE":"<>","LT":"<","LE":"<=","GT":">","GE":">="}
-    operand = op[len(op)-2:]
 
-    return drez[operand]
+    if len(op) > 2:
+        operand = op[len(op)-2:]
+    else:
+        operand = op
+
+    if operand in drez:
+        return drez[operand]
+
+    return ""
+
+# /////////////////////////////////////////////////////////////////////////
+def namalzieCABCall(Opcode, fact1, fact2, result):
+    global gblGOTOLst
+    global gblIndent
+
+    # setup comparison form cab opcode
+    compar = getRPG3_ComparisonOp(Opcode)
+    msg = "();"
+
+    # result of cab is a GOTO so flag it
+    if result in gblGOTOLst:
+        msg = " // goto this tag"
+
+    return "IF {0} {2} {1};\n{4}    {3}{5}\n{4}ENDIF;\n".format(fact1, fact2, compar, result, gblIndent, msg)
 
 # /////////////////////////////////////////////////////////////////////////
 def getCallParamList(callName):
@@ -607,7 +638,7 @@ def cComposer(itmArr, originalLine):
         if itmArr[5] != "":
             outputLine += "{1}*in{0} = %error();\n".format(itmArr[5], gblIndent)
     if itmArr[0] == "CABEQ" or itmArr[0] == "CABNE" or itmArr[0] == "CABGT" or itmArr[0] == "CABLT" or itmArr[0] == "CABGE" or itmArr[0] == "CABLE":
-        outputLine += "IF {1} {3} {2};\n{5}    {4};\n{5}ENDIF;\n".format(itmArr[0], itmArr[2], itmArr[3], COMPARITOR[itmArr[0][3:]], itmArr[1], gblIndent)
+        outputLine += namalzieCABCall(itmArr[0], itmArr[2], itmArr[3], itmArr[1])
     if itmArr[0] == "XFOOT":
         outputLine += "{0} = %xfoot({1});\n".format(itmArr[1],itmArr[3])
     if itmArr[0] == "XLATE":
@@ -810,6 +841,7 @@ def setup(lines):
     global gblProcedureDivision
     global gblProgramName
     global gblSQLBlock
+    global gblSubroutine
     setLineControl = ""
     controlNtoConst = ""
     entryParamiters = ""
@@ -837,6 +869,13 @@ def setup(lines):
         # dynamic result variable declaration
         Len = (lin[58:63]).strip()
         d = (lin[63:65]).strip()
+
+        # get list of tags for goto's
+        if Opcode == "GOTO" or Opcode == "TAG":
+            if Opcode == "GOTO":
+                addGOTOList(fact2)
+            else:
+                addGOTOList(fact1)
 
         # setup program paramiters
         if Opcode == "PLIST" and fact1 == "*ENTRY":
