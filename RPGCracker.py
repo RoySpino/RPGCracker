@@ -518,9 +518,9 @@ def cComposer(itmArr, originalLine):
             else:
                 outputLine += "*in{2} = %Bitand({0}: {1}) <> x'00' and  %Bitand({0}: {1}) <> {1};\n".format(itmArr[1], itmArr[3], itmArr[5])
     if itmArr[0] == "ANDEQ" or itmArr[0] == "ANDNE" or itmArr[0] == "ANDLT" or itmArr[0] == "ANDLE" or itmArr[0] == "ANDGT" or itmArr[0] == "ANDGE":
-        outputLine += "\nand {0} {2} {1}\n".format(itmArr[2], itmArr[3], getRPG3_ComparisonOp(itmArr[0]))
+        outputLine += "and {0} {2} {1} // this is apart of the if/loop block\n".format(itmArr[2], itmArr[3], getRPG3_ComparisonOp(itmArr[0]))
     if itmArr[0] == "OREQ" or itmArr[0] == "ORNE" or itmArr[0] == "ORLT" or itmArr[0] == "ORLE" or itmArr[0] == "ORGT" or itmArr[0] == "ORGE":
-        outputLine += "\nor {0} {2} {1}\n".format(itmArr[2], itmArr[3], getRPG3_ComparisonOp(itmArr[0]))
+        outputLine += "or {0} {2} {1} // this is apart of the if/loop block\n".format(itmArr[2], itmArr[3], getRPG3_ComparisonOp(itmArr[0]))
     if itmArr[0] == "SUBDUR":
         outputLine += subDurTranslate(itmArr[2], itmArr[3], itmArr[1])
     if itmArr[0] == "ADDDUR":
@@ -533,7 +533,7 @@ def cComposer(itmArr, originalLine):
         else:
             outputLine += "%Occur({1}) = {0};\n".format(itmArr[2], itmArr[3])
         if  itmArr[6] != "":
-            outputLine += "\n*in{0} = %Equals();\n"
+            outputLine += "\n{1}*in{0} = %Equals();\n".format(itmArr[6], gblIndent)
     if "MOVEA" in itmArr[0]:
         outputLine += "{0} = {1};\n".format(itmArr[1], itmArr[3])
     if "COMP" in itmArr[0]:
@@ -565,9 +565,9 @@ def cComposer(itmArr, originalLine):
     if itmArr[0] == "WRITE" or itmArr[0] == "UPDATE" or itmArr[0] == "DELETE":
         outputLine += "{0} {1};\n".format(itmArr[0], itmArr[3])
         if itmArr[4] != "":
-            outputLine += "*in{0} = %error();\n".format(itmArr[4])
+            outputLine += "{1}*in{0} = %error();\n".format(itmArr[4], gblIndent)
         if itmArr[5] != "":
-            outputLine += "*in{0} = %eof();\n".format(itmArr[5])
+            outputLine += "{1}*in{0} = %eof();\n".format(itmArr[5], gblIndent)
     if "EVAL" in itmArr[0]:
         outputLine += "{0};\n".format(itmArr[1])
     if "READ" in itmArr[0] or itmArr[0] == "READE" or itmArr[0] == "READC" or itmArr[0] == "READPE":
@@ -576,9 +576,9 @@ def cComposer(itmArr, originalLine):
         else:
             outputLine += "{0} {1} {2};\n".format(itmArr[0], getKeyString(itmArr[2]), itmArr[3])
         if itmArr[4] != "":
-            outputLine += "*in{0} = %error();\n".format(itmArr[4])
+            outputLine += "{1}*in{0} = %error();\n".format(itmArr[4], gblIndent)
         if itmArr[6] != "":
-            outputLine += "*in{0} = %eof();\n".format(itmArr[6])
+            outputLine += "{1}*in{0} = %eof();\n".format(itmArr[6], gblIndent)
     if itmArr[0] == "ELSE":
         outputLine += "{0};\n".format(itmArr[0])
     if itmArr[0] == "IF" or itmArr[0] == "FOR" or itmArr[0] == "DOW" or itmArr[0] == "DOU" or itmArr[0] == "WHEN":
@@ -597,15 +597,15 @@ def cComposer(itmArr, originalLine):
     if itmArr[0] == "CHAIN" or itmArr[0] == "CHAIN(E)" or itmArr[0] == "CHAIN(N)":
         outputLine += "{0} {1} {2};\n".format(itmArr[0], getKeyString(itmArr[2]), itmArr[3])
         if itmArr[4] != "":
-            outputLine += "*in{0} = (%found() = *Off);\n".format(itmArr[4])
+            outputLine += "{1}*in{0} = (%found() = *Off);\n".format(itmArr[4], gblIndent)
         if itmArr[5] != "":
-            outputLine += "*in{0} = %error();\n".format(itmArr[5])
+            outputLine += "{1}*in{0} = %error();\n".format(itmArr[5], gblIndent)
     if itmArr[0] == "SETLL" or itmArr[0] == "SETLL(E)" or itmArr[0] == "SETGT" or itmArr[0] == "SETGT(E)":
         outputLine += "{0} {1} {2};\n".format(itmArr[0], getKeyString(itmArr[2]), itmArr[3])
         if itmArr[4] != "":
-            outputLine += "*in{0} = (%found() = *Off);\n".format(itmArr[4])
+            outputLine += "{1}*in{0} = (%found() = *Off);\n".format(itmArr[4], gblIndent)
         if itmArr[5] != "":
-            outputLine += "*in{0} = %error();\n".format(itmArr[5])
+            outputLine += "{1}*in{0} = %error();\n".format(itmArr[5], gblIndent)
     if itmArr[0] == "CABEQ" or itmArr[0] == "CABNE" or itmArr[0] == "CABGT" or itmArr[0] == "CABLT" or itmArr[0] == "CABGE" or itmArr[0] == "CABLE":
         outputLine += "IF {1} {3} {2};\n    {4};\nENDIF;\n".format(itmArr[0], itmArr[2], itmArr[3], COMPARITOR[itmArr[0][3:]], itmArr[1])
     if itmArr[0] == "XFOOT":
