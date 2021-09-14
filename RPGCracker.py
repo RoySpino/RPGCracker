@@ -133,6 +133,30 @@ def namalzieCABCall(Opcode, fact1, fact2, result):
     return "IF {0} {2} {1};\n{4}    {3}{5}\n{4}ENDIF;\n".format(fact1, fact2, compar, result, gblIndent, msg)
 
 # /////////////////////////////////////////////////////////////////////////
+def lookupHandler(Opcode, fact1, fact2, result, eq):
+    global gblIndent
+
+    ind = "{0}*in{1} = ({2} > 0);"format(gblIndent, eq)
+    arrOrTable = ""
+
+    # remove array indexing in fact2
+    # result is in TARR
+    # TArr[0] = arrayName
+    # TArr[1] = indexFoundAt
+    if "(" in fact2:
+        arrOrTable = arrOrTable.replace(")","")
+        tarr = arrOrTable.split("(")
+        arrOrTable = tarr[0]
+        
+    if len(tarr) == 2:
+        ind = "{0}*in{1} = ({2} <> 0);"format(gblIndent, eq, tarr[1])
+    else:
+        return "*in{0} = %{3}({1}: {2});"format(eq, fact1, fact2, Opcode)
+
+    return "{0} = %{4}({1}: {2});\n{3}"format(tarr[1], fact1, tarr[0], ind, Opcode)
+
+
+# /////////////////////////////////////////////////////////////////////////
 def getCallParamList(callName):
     global gblParams
     ret = ""
@@ -645,11 +669,8 @@ def cComposer(itmArr, originalLine):
         outputLine += "{0} = %xlate({1}: {2});\n".format(itmArr[1], itmArr[2], itmArr[3])
     if itmArr[0] == "TIME" or itmArr[0] == "DATE":
         outputLine += "{1} = %{0}();\n".format(itmArr[0], itmArr[1])
-    if itmArr[0] == "LOOKUP":
-        if itmArr[1] == "":
-            outputLine += "*in{1} = %{0}({2}: {3});\n".format(itmArr[0], itmArr[6], itmArr[2], itmArr[3])
-        else:
-            outputLine += "*in{1} = %{0}({2}: {3}: {4});\n".format(itmArr[0], itmArr[6], itmArr[2], itmArr[3], itmArr[4])
+    if "LOOKUP" in itmArr[0]:
+        outputLine += lookupHandler(itmArr[0], itmArr[2], itmArr[3], itmArr[6])
     if itmArr[0] == "BEGSR":
         doAddIndent = True
         outputLine += "// /////////////////////////////////////////////////////////////////////////\nDcl-Proc {0};\n".format(itmArr[2])
