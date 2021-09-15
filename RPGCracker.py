@@ -135,24 +135,24 @@ def namalzieCABCall(Opcode, fact1, fact2, result):
 def lookupHandler(Opcode, fact1, fact2, result, eq):
     global gblIndent
 
-    ind = "{0}*in{1} = ({2} > 0);".format(gblIndent, eq)
+    ind = ""
     arrOrTable = ""
 
     # remove array indexing in fact2
-    # result is in TARR
+    # this is done by converting fact2 int a array [TArr]
     # TArr[0] = arrayName
     # TArr[1] = indexFoundAt
     if "(" in fact2:
-        arrOrTable = arrOrTable.replace(")","")
+        arrOrTable = fact2.replace(")","")
         tarr = arrOrTable.split("(")
         arrOrTable = tarr[0]
         
     if len(tarr) == 2:
         ind = "{0}*in{1} = ({2} <> 0);".format(gblIndent, eq, tarr[1])
     else:
-        return "*in{0} = %{3}({1}: {2});".format(eq, fact1, fact2, Opcode)
+        return "*in{0} = %{3}({1}: {2});\n".format(eq, fact1, fact2, Opcode)
 
-    return "{0} = %{4}({1}: {2});\n{3}".format(tarr[1], fact1, tarr[0], ind, Opcode)
+    return "{0} = %{4}({1}: {2});\n{3}\n".format(tarr[1], fact1, arrOrTable, ind, Opcode)
 
 
 # /////////////////////////////////////////////////////////////////////////
@@ -669,7 +669,7 @@ def cComposer(itmArr, originalLine):
     if itmArr[0] == "TIME" or itmArr[0] == "DATE":
         outputLine += "{1} = %{0}();\n".format(itmArr[0], itmArr[1])
     if "LOOKUP" in itmArr[0]:
-        outputLine += lookupHandler(itmArr[0], itmArr[2], itmArr[3], itmArr[6])
+        outputLine += lookupHandler(itmArr[0], itmArr[2], itmArr[3], itmArr[1], itmArr[6])
     if itmArr[0] == "BEGSR":
         doAddIndent = True
         outputLine += "// /////////////////////////////////////////////////////////////////////////\nDcl-Proc {0};\n".format(itmArr[2])
