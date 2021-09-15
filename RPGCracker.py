@@ -395,7 +395,7 @@ def dLineBreaker(line):
     varSize = lin[27: 34].strip()
     varType = lin[34: 35].strip()
     decSize = lin[35: 37].strip()
-    keywords = lin[39: 72].strip()
+    keywords = lin[38: 74].strip()
 
     # set decloration keyword
     if fildTyp == "S":
@@ -731,8 +731,11 @@ def dComposer(itmArr):
     from_ = 0
     vsize = 0
     outputLine = ""
+    keywrd = ""
     
-    # convert From and Variable size to inategers
+    # [varName, numFrom, varType, varSize, decSize, keywords, "*"]
+
+    # convert [From] and [Variable size] to inategers
     # but only for datastructure variables
     if itmArr[0] in ["Dcl-s","Dcl-c","Dcl-Ds"] == False:
         if itmArr[1] != "":
@@ -750,46 +753,50 @@ def dComposer(itmArr):
             outputLine += "End-Ds;\n"
             gblTmp = ""
 
+        # apply keywords
+        if itmArr[5] != "":
+            keywrd = " " + itmArr[5]
+
         # format standard variables
         if itmArr[2] == "ZONED" or itmArr[2] == "PACKED" or itmArr[2] == "INT":
-            outputLine += "{0} {1} {2}({3}: {4});\n".format(itmArr[0],itmArr[1],itmArr[2],itmArr[3],itmArr[4])
+            outputLine += "{0} {1} {2}({3}: {4}){5};\n".format(itmArr[0],itmArr[1],itmArr[2],itmArr[3],itmArr[4], keywrd)
         else:
             if itmArr[2] == "IND" or itmArr[2] == "DATE" or itmArr[2] == "TIME" or itmArr[2] == "TIMESTAMP":
-                outputLine += "{0} {1} {2};\n".format(itmArr[0],itmArr[1],itmArr[2])
+                outputLine += "{0} {1} {2}{3};\n".format(itmArr[0],itmArr[1],itmArr[2], keywrd)
             else:
-                outputLine += "{0} {1} {2}({3});\n".format(itmArr[0],itmArr[1],itmArr[2],itmArr[3])
-    
-    #setup data structures 
-    if "Dcl-Ds" in itmArr[0]:
-        #check to see if the datastructure is a program/dataArea/file status data structure
-        if itmArr[0] != "Dcl-Ds":
-            tarr = itmArr[0].split(" ")
-            itmArr[0] = tarr[0]
+                outputLine += "{0} {1} {2}({3}){4};\n".format(itmArr[0],itmArr[1],itmArr[2],itmArr[3], keywrd)
+    else:
+        #setup data structures 
+        if "Dcl-Ds" in itmArr[0]:
+            #check to see if the datastructure is a program/dataArea/file status data structure
+            if itmArr[0] != "Dcl-Ds":
+                tarr = itmArr[0].split(" ")
+                itmArr[0] = tarr[0]
+                
+            # at end of old data structure and start of new one
+            # add a end-ds before adding a delaration
+            if gblTmp == "#":
+                outputLine += "End-Ds;\n"
+
+            # set flag that indicates datastruct declaratrion
+            gblTmp = "#"
             
-        # at end of old data structure and start of new one
-        # add a end-ds before adding a delaration
-        if gblTmp == "#":
-            outputLine += "End-Ds;\n"
+            # set datastructure name
+            if itmArr[1] == "":
+                outputLine += "Dcl-ds *n;\n"
+            else:
+                outputLine += "Dcl-ds {0};\n".format(itmArr[1])
 
-        # set flag that indicates datastruct declaratrion
-        gblTmp = "#"
+        # setup fields for data structure
+        if itmArr[6] == "*":
+            LENGTH = abs(from_ - vsize) + 1
+            if itmArr[2] == "CHAR":
+                outputLine += "    {0} {2}({3}) pos({1});\n".format(itmArr[0], itmArr[1], itmArr[2], LENGTH)
+            if itmArr[2] == "ZONED":
+                outputLine += "    {0} {2}({3}: {4}) pos({1});\n".format(itmArr[0], itmArr[1], itmArr[2], LENGTH, itmArr[4])
+            if itmArr[2] == "":
+                outputLine += "    {0} {2};\n".format(itmArr[0], itmArr[1])
         
-        # set datastructure name
-        if itmArr[1] == "":
-            outputLine += "Dcl-ds *n;\n"
-        else:
-            outputLine += "Dcl-ds {0};\n".format(itmArr[1])
-
-    # setup fields for data structure
-    if itmArr[6] == "*":
-        LENGTH = abs(from_ - vsize) + 1
-        if itmArr[2] == "CHAR":
-            outputLine += "    {0} {2}({3}) pos({1});\n".format(itmArr[0], itmArr[1], itmArr[2], LENGTH)
-        if itmArr[2] == "ZONED":
-            outputLine += "    {0} {2}({3}: {4}) pos({1});\n".format(itmArr[0], itmArr[1], itmArr[2], LENGTH, itmArr[4])
-        if itmArr[2] == "":
-            outputLine += "    {0} {2};\n".format(itmArr[0], itmArr[1])
-    
     gblDataDivision += outputLine
     print(outputLine.rstrip())
 
