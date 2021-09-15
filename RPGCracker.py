@@ -83,7 +83,6 @@ def addGOTOList(TagName):
 
     if (TagName in gblGOTOLst) == False:
         gblGOTOLst.append(TagName)
-        print(">>>>>>>>>>>>>>>>>>> " + TagName)
 
 # /////////////////////////////////////////////////////////////////////////
 def getKeyString(keyName):
@@ -136,7 +135,7 @@ def namalzieCABCall(Opcode, fact1, fact2, result):
 def lookupHandler(Opcode, fact1, fact2, result, eq):
     global gblIndent
 
-    ind = "{0}*in{1} = ({2} > 0);"format(gblIndent, eq)
+    ind = "{0}*in{1} = ({2} > 0);".format(gblIndent, eq)
     arrOrTable = ""
 
     # remove array indexing in fact2
@@ -149,11 +148,11 @@ def lookupHandler(Opcode, fact1, fact2, result, eq):
         arrOrTable = tarr[0]
         
     if len(tarr) == 2:
-        ind = "{0}*in{1} = ({2} <> 0);"format(gblIndent, eq, tarr[1])
+        ind = "{0}*in{1} = ({2} <> 0);".format(gblIndent, eq, tarr[1])
     else:
-        return "*in{0} = %{3}({1}: {2});"format(eq, fact1, fact2, Opcode)
+        return "*in{0} = %{3}({1}: {2});".format(eq, fact1, fact2, Opcode)
 
-    return "{0} = %{4}({1}: {2});\n{3}"format(tarr[1], fact1, tarr[0], ind, Opcode)
+    return "{0} = %{4}({1}: {2});\n{3}".format(tarr[1], fact1, tarr[0], ind, Opcode)
 
 
 # /////////////////////////////////////////////////////////////////////////
