@@ -737,12 +737,12 @@ def dComposer(itmArr):
 
     # convert [From] and [Variable size] to inategers
     # but only for datastructure variables
-    if itmArr[0] in ["Dcl-s","Dcl-c","Dcl-Ds"] == False:
-        if itmArr[1] != "":
+    if (["Dcl-s","Dcl-c","Dcl-Ds"]).count(itmArr[0]) == 0:
+        if itmArr[1].isnumeric() == True:
             from_ = int(itmArr[1])
         else:
             from_ = 0
-        if itmArr[3] != "":
+        if itmArr[3].isnumeric() == True:
             vsize = int(itmArr[3])
         else:
             vsize = 0
@@ -789,11 +789,12 @@ def dComposer(itmArr):
 
         # setup fields for data structure
         if itmArr[6] == "*":
-            LENGTH = abs(from_ - vsize) + 1
+            LENGTH = abs(vsize - from_) + 1
+
             if itmArr[2] == "CHAR":
-                outputLine += "    {0} {2}({3}) pos({1});\n".format(itmArr[0], itmArr[1], itmArr[2], LENGTH)
+                outputLine += "    {0} Char({2}) pos({1});\n".format(itmArr[0], itmArr[1], LENGTH)
             if itmArr[2] == "ZONED":
-                outputLine += "    {0} {2}({3}: {4}) pos({1});\n".format(itmArr[0], itmArr[1], itmArr[2], LENGTH, itmArr[4])
+                outputLine += "    {0} Zoned({2}: {3}) pos({1});\n".format(itmArr[0], itmArr[1], LENGTH, itmArr[4])
             if itmArr[2] == "":
                 outputLine += "    {0} {2};\n".format(itmArr[0], itmArr[1])
         
