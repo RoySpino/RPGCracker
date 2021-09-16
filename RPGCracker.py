@@ -52,13 +52,23 @@ def addSQLBlock(keyName, value):
         gblSQLBlock[keyName] = value
 
 # /////////////////////////////////////////////////////////////////////////
-def addCallParamList(keyName, value):
+def addCallParamList(keyName, value, opcode):
     global gblParams
+    global gblTmp
 
-    if keyName in gblParams:
-        gblParams[keyName].append(value)
+    kname = ""
+
+    # clean up call command by removing ['] 
+    if "CALL" in opcode:
+        kname = keyName.replace("'","")
+        gblTmp = kname
     else:
-        gblParams[keyName] = [value]
+        kname = gblTmp
+
+    if kname in gblParams:
+        gblParams[kname].append(value)
+    else:
+        gblParams[kname] = [value]
 
 # /////////////////////////////////////////////////////////////////////////
 def getExternalProcCall(procName):
@@ -162,7 +172,7 @@ def getCallParamList(callName):
 
     # check if call is in paramiter dicationary
     if callName in gblParams:
-        arr = gblKeys[callName]
+        arr = gblParams[callName]
 
         # format the list retreived from the dictionary
         # and format the string for the call
@@ -879,6 +889,7 @@ def setup(lines):
 
     for line in lines:
         lin = line.strip().upper()
+        lineCnt += 1
 
         # do nothon on these conditions
         if len(lin) < 2:
@@ -913,6 +924,7 @@ def setup(lines):
                 entryParamiters += "    {0} char({1});\n".format(result, Len)
             else:
                 entryParamiters += "    {0} zoned({1}: {2});\n".format(result, Len, d)
+            continue
 
         # on klist and kfld return nothing (ret remains blank)
         if Opcode == "KLIST" or Opcode == "KFLD":
@@ -922,12 +934,12 @@ def setup(lines):
             else:
                 addkeyList(gblTmp, result)
         
-        if (Opcode == "CALL" or Opcode == "CALLP" or Opcode == "PARM") and Opcode != "PLIST":
-            if gblTmp == "CALL" or gblTmp == "CALLP":
-                gblTmp = fact1
-                addkeyList(fact1, "")
+        if Opcode == "CALL" or Opcode == "CALLP" or Opcode == "PARM":
+            if Opcode == "CALL" or Opcode == "CALLP":
+                gblTmp = fact2
+                addCallParamList(fact2, "", Opcode)
             else:
-                addCallParamList(gblTmp, result)
+                addCallParamList(gblTmp, result, "")
 
         if lin[:10] == "C/EXEC SQL" or lin[:10] == "C/END-EXEC" or lin[:2] == "C+":
             if lin[:10] == "C/EXEC SQL":
@@ -942,7 +954,6 @@ def setup(lines):
 
                 lines[lineCnt] = "C"
 
-        lineCnt += 1
 
 
     if entryParamiters != "":
