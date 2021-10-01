@@ -285,6 +285,32 @@ def mvrToBIF(result):
     return  "{0} = {1}".format(result, gblMVRStr)
 
 # /////////////////////////////////////////////////////////////////////////
+def setInd_On_Off(arr):
+    global gblIndent
+    cnt = 0
+    tstr = ""
+    ret = ""
+
+    # convert seton/setoff to freeform assignment
+    # array element 0 is the opcode 
+    for ind in arr[1:]:
+        if ind != "":
+            if "ON" in arr[0]:
+                tstr = "*in{0} = *On;\n".format(ind, gblIndent)
+            else:
+                tstr = "*in{0} = *Off;\n".format(ind, gblIndent)
+
+            # setup indents
+            # skip the first as it will be indented in composer
+            if cnt > 0:
+                ret += gblIndent + tstr
+            else:
+                ret += tstr
+            cnt += 1
+    
+    return ret
+
+# /////////////////////////////////////////////////////////////////////////
 def cLineBreaker(line):
     # RPG C line format
     # CL0N01Factor1+++++++Opcode&ExtFactor2+++++++Result++++++++Len++D+HiLoE
@@ -615,12 +641,7 @@ def cComposer(itmArr, originalLine):
     if itmArr[0] == "EXSR":
         outputLine += "{0}();\n".format(itmArr[3])
     if itmArr[0] == "SETON" or itmArr[0] == "SETOFF":
-        for ind in itmArr[1:]:
-            if ind != "":
-                if "ON" in itmArr[0]:
-                    outputLine += "*in{0} = *On;\n".format(ind)
-                else:
-                    outputLine += "*in{0} = *Off;\n".format(ind)
+        outputLine += setInd_On_Off(itmArr)
     if itmArr[0] == "EXCEPT":
         outputLine += "write {0}; // write to report format\n".format(itmArr[3])
     if itmArr[0] == "CLOSE" or itmArr[0] == "OPEN":
