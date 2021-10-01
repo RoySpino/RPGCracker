@@ -145,6 +145,7 @@ def namalzieCABCall(Opcode, fact1, fact2, result):
 def lookupHandler(Opcode, fact1, fact2, result, eq):
     global gblIndent
 
+    tarr = []
     ind = ""
     arrOrTable = ""
 
