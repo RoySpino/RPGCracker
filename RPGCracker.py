@@ -255,6 +255,21 @@ def subAddDurTranslate(op, fact1, fact2, result):
         #on result operation returns an integer
         arr = result.split(":")
         return "{0} = %diff({1}:{2}:{3});\n".format(arr[0], fact1, fact2, arr[1])
+        
+# /////////////////////////////////////////////////////////////////////////
+def normalizeOccurOp(result, fact1, fact2, lo):
+    global gblIndent
+    ret = ""
+    
+    if fact1 == "":
+        ret += "{0} = %Occur({1});\n".format(result, fact2)
+    else:
+        ret += "%Occur({1}) = {0};\n".format(fact1, fact2)
+
+    if lo != "":
+        ret += "{1}*in{0} = %Equal();\n".format(lo, gblIndent)
+
+    return ret
 
 # /////////////////////////////////////////////////////////////////////////
 def mathOperation(op, fact1, fact2, result, HI, LO, EQ):
@@ -624,12 +639,7 @@ def cComposer(itmArr, originalLine):
     if itmArr[0] == "CAT":
         outputLine += "{0} = {1} + {2};\n".format(itmArr[1], itmArr[2], itmArr[3])
     if "OCCUR" in itmArr[0]:
-        if itmArr[2] == "":
-            outputLine += "{0} = %Occur({1});\n".format(itmArr[1], itmArr[3])
-        else:
-            outputLine += "%Occur({1}) = {0};\n".format(itmArr[2], itmArr[3])
-        if  itmArr[6] != "":
-            outputLine += "\n{1}*in{0} = %Equals();\n".format(itmArr[6], gblIndent)
+        outputLine += normalizeOccurOp(itmArr[1], itmArr[2], itmArr[3], itmArr[5])
     if "MOVEA" in itmArr[0]:
         outputLine += "{0} = {1};\n".format(itmArr[1], itmArr[3])
     if "COMP" in itmArr[0]:
