@@ -230,7 +230,7 @@ def translateIndicators(hi, lo, eq):
     return [res, op]
 
 # /////////////////////////////////////////////////////////////////////////
-def subDurTranslate(fact1, fact2, result):
+def subAddDurTranslate(op, fact1, fact2, result):
     durationToFunc = {"*YEARS"   : "years"   , "*Y" : "years"   , 
                       "*MONTHS"  : "months"  , "*M" : "months"  , 
                       "*DAYS"    : "Days"    , "*D" : "Days"    , 
@@ -238,12 +238,19 @@ def subDurTranslate(fact1, fact2, result):
                       "*MINUTES" : "minutes" , "*MN": "minutes" , 
                       "*SECONDS" : "Seconds" , "*S" : "Seconds" , 
                       "*MSECONDS": "mseconds", "*MS": "mseconds" }
+    mathOp = ""
+
+    # generate assignment operation
+    if "ADD" in op:
+        mathOp = "+="
+    else:
+        mathOp = "-="
 
     # get the factor that has a [:] 
     if ":" in fact2:
         # on factor 2 operation returns a date
         arr = fact2.split(":")
-        return "{0} -= %{1}({2});\n".format(result, arr[1], arr[0])
+        return "{0} {3} %{1}({2});\n".format(result, durationToFunc[arr[1]], arr[0], mathOp)
     else:
         #on result operation returns an integer
         arr = result.split(":")
@@ -612,10 +619,8 @@ def cComposer(itmArr, originalLine):
         outputLine += "and {0} {2} {1} // this is apart of the if/loop block\n".format(itmArr[2], itmArr[3], getRPG3_ComparisonOp(itmArr[0]))
     if itmArr[0] == "OREQ" or itmArr[0] == "ORNE" or itmArr[0] == "ORLT" or itmArr[0] == "ORLE" or itmArr[0] == "ORGT" or itmArr[0] == "ORGE":
         outputLine += "or {0} {2} {1} // this is apart of the if/loop block\n".format(itmArr[2], itmArr[3], getRPG3_ComparisonOp(itmArr[0]))
-    if itmArr[0] == "SUBDUR":
-        outputLine += subDurTranslate(itmArr[2], itmArr[3], itmArr[1])
-    if itmArr[0] == "ADDDUR":
-        outputLine += subDurTranslate(itmArr[2], itmArr[3], itmArr[1])
+    if itmArr[0] == "SUBDUR" or itmArr[0] == "ADDDUR":
+        outputLine += subAddDurTranslate(itmArr[0], itmArr[2], itmArr[3], itmArr[1])
     if itmArr[0] == "CAT":
         outputLine += "{0} = {1} + {2};\n".format(itmArr[1], itmArr[2], itmArr[3])
     if "OCCUR" in itmArr[0]:
