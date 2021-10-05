@@ -13,6 +13,7 @@ gblProgramName = ""
 gblSQLBlock = {"": ""}
 gblMVRStr = ""
 gblGOTOLst = []
+gblEndBlockLst = []
 
 def clearFile(path):
     f = open(path, 'w')
@@ -354,6 +355,20 @@ def normalizeReadOp(op, fact1, fact2, lo, eq):
     return ret
 
 # /////////////////////////////////////////////////////////////////////////
+def normaizeGenericEndOp(originalLine):
+    global gblIndent
+    global gblEndBlockLst
+    global gblProcedureDivision
+    ret = ""
+
+    gblIndent = gblIndent[4:]
+
+    if len(gblEndBlockLst) == 0:
+        gblProcedureDivision += "{0}\n".format(originalLine)
+    else:
+        gblProcedureDivision += "{0}{1}\n".format(gblIndent, gblEndBlockLst.pop(len(gblEndBlockLst)-1))
+
+# /////////////////////////////////////////////////////////////////////////
 def cLineBreaker(line):
     # RPG C line format
     # CL0N01Factor1+++++++Opcode&ExtFactor2+++++++Result++++++++Len++D+HiLoE
@@ -361,6 +376,7 @@ def cLineBreaker(line):
     global gblTmp
     global gblDataDivision
     global gblInLineDeclare
+    global gblEndBlockLst
     setLineControl = ""
     controlNtoConst = ""
     lin = line.strip()
@@ -395,6 +411,7 @@ def cLineBreaker(line):
     # handle do blocks
     if Opcode == "DO":
         if (N != "" or iO1 != "" or L0 != "") and (fact2 == "" and result == ""):
+            gblEndBlockLst.append("endif;")
             if L0 == "":
                 if N == "":
                     return ["IF", "*in{0} = *On".format(iO1)]
@@ -403,10 +420,21 @@ def cLineBreaker(line):
             else:
                 return ["IF", "*in{0} = *On".format(L0)]
         else:
+            gblEndBlockLst.append("endfor;")
             if fact2 != "" and result != "":
                 return ["FOR", "{0} to {1}".format(result, fact2)]
             else:
                 return ["FOR", "1 to {1}".format(result, fact2)]
+
+    # assign block type
+    if "IF" in Opcode:
+        gblEndBlockLst.append("endif;")
+    else:
+        if "DO" in Opcode and Opcode != "DO":
+            gblEndBlockLst.append("enddo;")
+        else:
+            if Opcode == "FOR":
+                gblEndBlockLst.append("endfor;")
 
     # handl lines that dont use factor 1 and 2
     if "EVAL" in Opcode or Opcode == "IF" or Opcode == "FOR" or Opcode == "DOW" or Opcode == "DOU" or Opcode == "WHEN":
@@ -461,6 +489,7 @@ def cLineBreaker(line):
 def dLineBreaker(line):
     #DName+++++++++++ETDsFrom+++To/L+++IDc.Keywords+++++++++++++++++++++++++ 
     global gblTmp
+    global gblEndBlockLst
     setLineControl = ""
     controlNtoConst = ""
     lin = line.strip()
@@ -614,8 +643,7 @@ def cComposer(itmArr, originalLine):
         gblProcedureDivision += "{0}\n".format(originalLine)
         return
     if itmArr[0] == "END":
-        gblIndent = gblIndent[4:]
-        gblProcedureDivision += "{0}\n".format(originalLine)
+        normaizeGenericEndOp(originalLine)
         return
 
 
@@ -709,6 +737,8 @@ def cComposer(itmArr, originalLine):
         outputLine += "DOU {1} {3} {2};\n".format(itmArr[0], itmArr[2], itmArr[3], COMPARITOR[itmArr[0][3:]])
     if itmArr[0] == "RETURN" or itmArr[0] == "ENDIF" or itmArr[0] == "ENDDO" or itmArr[0] == "ENDFOR" or itmArr[0] == "ENDSL" or itmArr[0] == "SELECT" or itmArr[0] == "OTHER":
         outputLine += "{0};\n".format(itmArr[0])
+        if itmArr[0] == "ENDIF" or itmArr[0] == "ENDDO" or itmArr[0] == "ENDFOR":
+            gblEndBlockLst.pop(len(gblEndBlockLst)-1)
     if itmArr[0] == "CHAIN" or itmArr[0] == "CHAIN(E)" or itmArr[0] == "CHAIN(N)":
         outputLine += "{0} {1} {2};\n".format(itmArr[0], getKeyString(itmArr[2]), itmArr[3])
         if itmArr[4] != "":
