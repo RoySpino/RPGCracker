@@ -261,11 +261,13 @@ def normalizeOccurOp(result, fact1, fact2, lo):
     global gblIndent
     ret = ""
     
+    # determin the occurance operation (get/set)
     if fact1 == "":
         ret += "{0} = %Occur({1});\n".format(result, fact2)
     else:
         ret += "%Occur({1}) = {0};\n".format(fact1, fact2)
 
+    # process occurance indicator
     if lo != "":
         ret += "{1}*in{0} = %Equal();\n".format(lo, gblIndent)
 
@@ -330,6 +332,25 @@ def setInd_On_Off(arr):
                 ret += tstr
             cnt += 1
     
+    return ret
+
+# /////////////////////////////////////////////////////////////////////////
+def normalizeReadOp(op, fact1, fact2, lo, eq): 
+    global gblIndent
+    ret = ""
+
+    # process read operation
+    if fact1 == "":
+        ret += "{0} {1};\n".format(op, fact2)
+    else:
+        ret += "{0} {1} {2};\n".format(op, getKeyString(fact1), fact2)
+        
+    # process indicators
+    if lo != "":
+        ret += "{1}*in{0} = %error();\n".format(lo, gblIndent)
+    if eq != "":
+        ret += "{1}*in{0} = %eof();\n".format(eq, gblIndent)
+
     return ret
 
 # /////////////////////////////////////////////////////////////////////////
@@ -672,14 +693,7 @@ def cComposer(itmArr, originalLine):
     if "EVAL" in itmArr[0]:
         outputLine += "{0};\n".format(itmArr[1])
     if "READ" in itmArr[0] or itmArr[0] == "READE" or itmArr[0] == "READC" or itmArr[0] == "READPE":
-        if itmArr[2] == "":
-            outputLine += "{0} {1};\n".format(itmArr[0], itmArr[3])
-        else:
-            outputLine += "{0} {1} {2};\n".format(itmArr[0], getKeyString(itmArr[2]), itmArr[3])
-        if itmArr[4] != "":
-            outputLine += "{1}*in{0} = %error();\n".format(itmArr[4], gblIndent)
-        if itmArr[6] != "":
-            outputLine += "{1}*in{0} = %eof();\n".format(itmArr[6], gblIndent)
+        outputLine += normalizeReadOp(itmArr[0], itmArr[2], itmArr[3], itmArr[5], itmArr[6])
     if itmArr[0] == "ELSE":
         outputLine += "{0};\n".format(itmArr[0])
     if itmArr[0] == "IF" or itmArr[0] == "FOR" or itmArr[0] == "DOW" or itmArr[0] == "DOU" or itmArr[0] == "WHEN":
