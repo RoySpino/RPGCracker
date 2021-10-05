@@ -369,6 +369,35 @@ def normaizeGenericEndOp(originalLine):
         gblProcedureDivision += "{0}{1}\n".format(gblIndent, gblEndBlockLst.pop(len(gblEndBlockLst)-1))
 
 # /////////////////////////////////////////////////////////////////////////
+def normalizeTestOp(op, result, fact1, lo):
+    global gblIndent
+    #[Opcode, result, fact1, fact2, hi, lo, eq]
+    tsOp = {"TEST(D)":"Test(DE)",  # date error
+            "TEST(Z)":"Test(DE)",  # timestamp error
+            "TEST(T)":"Test(ZE)",  # time error
+            "TEST(DE)":"Test(DE)",
+            "TEST(TE)":"Test(TE)",
+            "TEST(ZE)":"Test(ZE)"}
+
+    # normalize op by removeing spaces
+    op = op.replace(" ", "")
+
+    # translate op to freeformat op
+    if op in tsOp:
+        freeOp = tsOp[op]
+    else:
+        return ""
+    
+    # rewrite line
+    ret = "{0} {1} {2};\n".format(freeOp, fact1, result)
+
+    # apply indicator
+    if lo != "":
+        ret += "{0}*in{1} = %error();\n".format(gblIndent, lo)
+
+    return ret
+
+# /////////////////////////////////////////////////////////////////////////
 def cLineBreaker(line):
     # RPG C line format
     # CL0N01Factor1+++++++Opcode&ExtFactor2+++++++Result++++++++Len++D+HiLoE
@@ -489,7 +518,6 @@ def cLineBreaker(line):
 def dLineBreaker(line):
     #DName+++++++++++ETDsFrom+++To/L+++IDc.Keywords+++++++++++++++++++++++++ 
     global gblTmp
-    global gblEndBlockLst
     setLineControl = ""
     controlNtoConst = ""
     lin = line.strip()
@@ -768,6 +796,8 @@ def cComposer(itmArr, originalLine):
         outputLine += "End-Proc;\n"
     if itmArr[0] == "SORTA":
         outputLine += "SORTA {0};\n".format(itmArr[3])
+    if "TEST" in itmArr[0]:
+        outputLine += normalizeTestOp(itmArr[0], itmArr[1], itmArr[2], itmArr[5])
     
     if OnConditinalLine == True:
         outputLine += "{0}ENDIF;\n".format(gblIndent)
