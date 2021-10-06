@@ -8,14 +8,14 @@ ___
 **C:\\>**    Python    .\\RPGCracker.py    [yourCodehere]
 ___
 ### Ex:
-**C:\\>** ls
+**C:\\Rpg\\>** ls
 
      mySampleCode.rpg
 
-**C:\\>** python    .\\RPGCracker.py    .\\mySampleCode.rpg
+**C:\\Rpg\\>** python    .\\RPGCracker.py    .\\mySampleCode.rpg
 
   . . .
 
-**C:\\>** ls
+**C:\\Rpg\\>** ls
 
      mySampleCode.rpg        mySampleCode_free.rpg
