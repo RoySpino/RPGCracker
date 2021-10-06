@@ -5,15 +5,16 @@ This code is meant to help anyone who needs to understand the logic flow of trad
 ___
 ### Code useage:
 
-**C:\>**    Python ./RPGCracker.py [yourCodehere]
+**C:\\>**    Python ./RPGCracker.py [yourCodehere]
 ___
 ### Ex:
-**C:\>** ls
+**C:\\>** ls
+
 mySampleCode.rpg
 
-**C:\>** python RPGCracker.py mySampleCode.rpg
+**C:\\>** python RPGCracker.py mySampleCode.rpg
 
   . . .
 
-**C:\>** ls
+**C:\\>** ls
 mySampleCode.rpg   mySampleCode_free.rpg
