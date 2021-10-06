@@ -264,13 +264,13 @@ def normalizeOccurOp(result, fact1, fact2, lo):
     
     # determin the occurance operation (get/set)
     if fact1 == "":
-        ret += "{0} = %Occur({1});\n".format(result, fact2)
+        ret += "{0} = %Occur({1}); // GET occurrence index\n".format(result, fact2)
     else:
-        ret += "%Occur({1}) = {0};\n".format(fact1, fact2)
+        ret += "%Occur({1}) = {0}; // SET occurrence index\n".format(fact1, fact2)
 
     # process occurance indicator
     if lo != "":
-        ret += "{1}*in{0} = %Equal();\n".format(lo, gblIndent)
+        ret += "{1}*in{0} = %Error();\n".format(lo, gblIndent)
 
     return ret
 
@@ -373,8 +373,8 @@ def normalizeTestOp(op, result, fact1, lo):
     global gblIndent
     #[Opcode, result, fact1, fact2, hi, lo, eq]
     tsOp = {"TEST(D)":"Test(DE)",  # date error
-            "TEST(Z)":"Test(ZE)",  # timestamp error
-            "TEST(T)":"Test(TE)",  # time error
+            "TEST(Z)":"Test(DE)",  # timestamp error
+            "TEST(T)":"Test(ZE)",  # time error
             "TEST(DE)":"Test(DE)",
             "TEST(TE)":"Test(TE)",
             "TEST(ZE)":"Test(ZE)"}
