@@ -11,13 +11,13 @@ ___
 C:\> dir
 
 Mode                 LastWriteTime         Length Name
-----                 -------------         ------ ----
--a----         10/5/2021  10:54 AM            274 mySampleCode.rpg
+"----                 -------------         ------ ----"
+"-a----         10/5/2021  10:54 AM            274 mySampleCode.rpg"
 
 C:\> python RPGCracker.py mySampleCode.rpg
 C:\> dir
 
 Mode                 LastWriteTime         Length Name
-----                 -------------         ------ ----
--a----         10/5/2021  10:54 AM            274 mySampleCode.rpg
--a----         10/5/2021  10:14 AM            274 mySampleCode_free.rpg
+"----                 -------------         ------ ----"
+"-a----         10/5/2021  10:54 AM            274 mySampleCode.rpg"
+"-a----         10/5/2021  10:14 AM            274 mySampleCode_free.rpg"
