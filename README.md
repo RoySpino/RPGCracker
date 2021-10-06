@@ -10,7 +10,7 @@ ___
 ### Ex:
 **C:\\>** ls
 
-mySampleCode.rpg
+     mySampleCode.rpg
 
 **C:\\>** python RPGCracker.py mySampleCode.rpg
 
@@ -18,4 +18,4 @@ mySampleCode.rpg
 
 **C:\\>** ls
 
-mySampleCode.rpg   mySampleCode_free.rpg
+     mySampleCode.rpg        mySampleCode_free.rpg
