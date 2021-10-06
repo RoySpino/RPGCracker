@@ -373,8 +373,8 @@ def normalizeTestOp(op, result, fact1, lo):
     global gblIndent
     #[Opcode, result, fact1, fact2, hi, lo, eq]
     tsOp = {"TEST(D)":"Test(DE)",  # date error
-            "TEST(Z)":"Test(DE)",  # timestamp error
-            "TEST(T)":"Test(ZE)",  # time error
+            "TEST(Z)":"Test(ZE)",  # timestamp error
+            "TEST(T)":"Test(TE)",  # time error
             "TEST(DE)":"Test(DE)",
             "TEST(TE)":"Test(TE)",
             "TEST(ZE)":"Test(ZE)"}
