@@ -7,7 +7,7 @@ ___
 
 **C:\\>**    Python    .\\RPGCracker.py    [yourCodehere]
 ___
-### Ex:
+### Example:
 **C:\\Rpg\\>** ls
 
      mySampleCode.rpg
