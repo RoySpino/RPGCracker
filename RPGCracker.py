@@ -627,6 +627,22 @@ def fLineBreaker(line):
     return ret
 
 # /////////////////////////////////////////////////////////////////////////
+def pLineBreaker(line):
+    line = line.upper()
+    proName = ""
+    startEnd = ""
+
+    proName = lin[1: 16].strip()
+    startEnd = lin[18: 21].strip()
+
+    if startEnd == "B":
+        startEnd = "Dcl-Proc"
+    else:
+        startEnd = "End-Proc"
+
+    return [startEnd, proName]
+
+# /////////////////////////////////////////////////////////////////////////
 def cComposer(itmArr, originalLine):
     global gblProcedureDivision
     global gblIndent
@@ -846,8 +862,9 @@ def fComposer(itmArr):
     print(outline.rstrip())
             
 # /////////////////////////////////////////////////////////////////////////
-def dComposer(itmArr):
+def dComposer(itmArr, onProcedureBlock):
     global gblDataDivision
+    global gblProcedureDivision
     global gblTmp
     from_ = 0
     vsize = 0
@@ -919,8 +936,17 @@ def dComposer(itmArr):
             if itmArr[2] == "":
                 outputLine += "    {0} {2};\n".format(itmArr[0], itmArr[1])
         
-    gblDataDivision += outputLine
+    # write to data/ procedure division
+    if onProcedureBlock == True:
+        gblProcedureDivision += outputLine
+    else:
+        gblDataDivision += outputLine
+
     print(outputLine.rstrip())
+
+# /////////////////////////////////////////////////////////////////////////
+def pComposer(itmArr):
+    return "{0} {1};\n".format(itmArr[0], itmArr[1])
 
 # /////////////////////////////////////////////////////////////////////////
 def rectifier(lines):
@@ -933,6 +959,7 @@ def rectifier(lines):
     Ospec = ""
     ret = ""
     arr = []
+    onProc = False
 
     for lin in lines:
         lin = lin.strip().upper()
@@ -954,7 +981,7 @@ def rectifier(lines):
             if spec == "D":
                 arr = dLineBreaker(lin)
                 #print(arr)
-                dComposer(arr)
+                dComposer(arr, onProc)
             else:
                 if spec == "F":
                     arr = fLineBreaker(lin)
@@ -963,7 +990,12 @@ def rectifier(lines):
                     if spec == "H":
                         gblFileDivision += "Ctl-Opt " + lin[1:].strip() + ";\n"
                     else:
-                        gblProcedureDivision += lin + "\n"
+                        if spec == "P":
+                            onProc = True
+                            arr = pLineBreaker(lin)
+                            pComposer(arr, lin)
+                        else:
+                            gblProcedureDivision += lin + "\n"
                 
     
     # combine RPG divisions into final program
@@ -977,9 +1009,8 @@ def rectifier(lines):
     if "\n*" in ret:
         ret = ret.replace("\n*","\n//")
 
-    # fix any indicators that where commented by mistake
-    if "\n//in" in ret:
-        ret = ret.replace("\n//in","\n*in")
+        # fix any indicators that where commented by mistake
+        ret = ret.replace("\n//IN","\n*in")
 
     return ret
 
@@ -994,20 +1025,21 @@ def setup(lines):
     setLineControl = ""
     controlNtoConst = ""
     entryParamiters = ""
+    first10 = ""
+    first3 = ""
     ret = []
     lineCnt = 0
+    sqlLinCnt = 0
     sqlKey = ""
 
     for line in lines:
         lin = line.strip().upper()
         lineCnt += 1
 
-        # do nothon on these conditions
+        # do nothing on these conditions
         if len(lin) < 2:
-            lineCnt += 1
             continue
         if lin[1] == "*":
-            lineCnt += 1
             continue
 
         # main instruction operations ( factors )
@@ -1015,10 +1047,28 @@ def setup(lines):
         result = lin[44:58].strip()
         fact1 = lin[6:20].strip()
         fact2 = lin[30:44].strip()
+        first10 = lin[:10]
+        first3 = lin[:3]
 
         # dynamic result variable declaration
         Len = (lin[58:63]).strip()
         d = (lin[63:65]).strip()
+
+
+        if "/EXEC SQL" in first10 or "/END-EXEC" in first10 or "C+" in first3:
+            if "/EXEC SQL" in first10:
+                sqlKey = "~{0}".format(sqlLinCnt)
+                addSQLBlock(sqlKey, lin[2:])
+                lines[lineCnt-1] = "C" + sqlKey
+            else:
+                if "/END-EXEC" in first10:
+                    addSQLBlock(sqlKey, ";")
+                    sqlLinCnt += 1
+                else:
+                    addSQLBlock(sqlKey, lin[2:])
+
+                lines[lineCnt-1] = "C"
+            continue
 
         # get list of tags for goto's
         if Opcode == "GOTO" or Opcode == "TAG":
@@ -1026,6 +1076,7 @@ def setup(lines):
                 addGOTOList(fact2)
             else:
                 addGOTOList(fact1)
+            continue
 
         # setup program paramiters
         if Opcode == "PLIST" and fact1 == "*ENTRY":
@@ -1044,6 +1095,7 @@ def setup(lines):
                 addkeyList(fact1, "")
             else:
                 addkeyList(gblTmp, result)
+            continue
         
         if Opcode == "CALL" or Opcode == "CALLP" or Opcode == "PARM":
             if Opcode == "CALL" or Opcode == "CALLP":
@@ -1051,24 +1103,13 @@ def setup(lines):
                 addCallParamList(fact2, "", Opcode)
             else:
                 addCallParamList(gblTmp, result, "")
-
-        if lin[:10] == "C/EXEC SQL" or lin[:10] == "C/END-EXEC" or lin[:2] == "C+":
-            if lin[:10] == "C/EXEC SQL":
-                sqlKey = "~{0}".format(lineCnt)
-                addSQLBlock(sqlKey, lin[2:])
-                lines[lineCnt] = "C" + sqlKey
-            else:
-                if lin[:10] == "C/END-EXEC":
-                    addSQLBlock(sqlKey, ";")
-                else:
-                    addSQLBlock(sqlKey, lin[2:])
-
-                lines[lineCnt] = "C"
-
+            continue
 
 
     if entryParamiters != "":
         gblProcedureDivision += "Dcl-Pr Main extpgm('{1}');\n{0}End-Pr;\n\nDcl-Pi Main;\n{0}End-Pi;\n".format(entryParamiters, gblProgramName)
+
+    return lines
 
 # /////////////////////////////////////////////////////////////////////////
 def Main():
@@ -1092,7 +1133,7 @@ def Main():
         lines = read(arg[1])
 
         # process the RPG file
-        setup(lines)
+        lines = setup(lines)
         out = rectifier(lines)
         
         # save result
