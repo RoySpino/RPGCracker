@@ -9,11 +9,11 @@ ___
 ___
 ### Example:
      C:\Rpg\> ls
-      mySampleCode.rpg
+      mySampleCode.rpg     RPGCracker.py
 
      C:\Rpg\> python .\RPGCracker.py .\mySampleCode.rpg
 
      . . .
 
      C:\Rpg\> ls
-     mySampleCode.rpg        mySampleCode_free.rpg
+     mySampleCode.rpg      mySampleCode_free.rpg     RPGCracker.py
