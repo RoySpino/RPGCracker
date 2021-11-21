@@ -288,11 +288,11 @@ def mathOperation(op, fact1, fact2, result, HI, LO, EQ):
         ret += "{0} {1}= {2};\n".format(result, oper[op], fact2)
 
     if HI != "":
-        ret += "*in{0} = ({1} > 0);\n".format(itmArr[4], itmArr[1])
+        ret += "*in{0} = ({1} > 0);\n".format(HI, result)
     if LO != "":
-        ret += "*in{0} = ({1} < 0);\n".format(itmArr[5], itmArr[1])
+        ret += "*in{0} = ({1} < 0);\n".format(LO, result)
     if EQ != "":
-        ret += "*in{0} =({1} = 0);\n".format(itmArr[6], itmArr[1])
+        ret += "*in{0} =({1} = 0);\n".format(EQ, result)
 
     # assign MVR value
     if op == "DIV":
@@ -632,8 +632,8 @@ def pLineBreaker(line):
     proName = ""
     startEnd = ""
 
-    proName = lin[1: 16].strip()
-    startEnd = lin[18: 21].strip()
+    proName = line[1: 16].strip()
+    startEnd = line[18: 21].strip()
 
     if startEnd == "B":
         startEnd = "Dcl-Proc"
