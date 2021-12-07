@@ -1,5 +1,6 @@
 import sys
 import platform
+import re
 
 gblFileDivision = ""
 gblDataDivision = ""
@@ -14,6 +15,8 @@ gblSQLBlock = {"": ""}
 gblMVRStr = ""
 gblGOTOLst = []
 gblEndBlockLst = []
+gblControlCascade = ""
+gblDS_StartCnt = 0
 
 def clearFile(path):
     f = open(path, 'w')
@@ -355,6 +358,33 @@ def normalizeReadOp(op, fact1, fact2, lo, eq):
     return ret
 
 # /////////////////////////////////////////////////////////////////////////
+def normalizeCheckR(op, result, fact1, fact2, eq):
+    global gblIndent
+    startAt = ""
+    rInd = ""
+    res = ""
+
+    if ":" in fact1:
+        tarr = fact1.split(":")
+        fact1 = tarr[0]
+        startAt = tarr[1]
+
+    if eq != "":
+        rInd = "*in{0} = %error();".format(eq)
+
+    if startAt == "":
+        res = "%{0}({1}: {2});\n".format(op, fact1, fact2)
+    else:
+        res = "%{0}({1}: {2}: {3});\n".format(op, fact1, fact2, startAt)
+
+    if eq == "" and result != "":
+        return "{0} = {1}".format(result, res)
+    if eq != "" and result == "":
+        return "{0}\n{1}{2};".format(res, gblIndent, rInd)
+    if eq != "" and result != "":
+        return "{0} = {1}\n{2}{3};".format(result, res, gblIndent, rInd)
+
+# /////////////////////////////////////////////////////////////////////////
 def normaizeGenericEndOp(originalLine):
     global gblIndent
     global gblEndBlockLst
@@ -396,6 +426,66 @@ def normalizeTestOp(op, result, fact1, lo):
         ret += "{0}*in{1} = %error();\n".format(gblIndent, lo)
 
     return ret
+    
+# /////////////////////////////////////////////////////////////////////////
+def normalizeDefine(result, fact1, fact2):
+    global gblDataDivision
+
+    if fact2 == "":
+        name = "*n"
+    else:
+        name = fact2
+
+    gblDataDivision += "Dcl-s {0} like({1});\n".format(result, fact2)
+    return ""
+
+# /////////////////////////////////////////////////////////////////////////
+def appendToCascade(L0, N, iO1):
+    global gblControlCascade
+    nLine = ""
+
+    if N == "N":
+        tf = "*Off"
+    else:
+        tf = "*On"
+
+    if L0 == "AN":
+        nLine = "{0} And *in{1} = {2}".format(gblControlCascade, iO1, tf)
+    else:
+        nLine = "{0} Or *in{1} = {2}".format(gblControlCascade, iO1, tf)
+    
+    gblControlCascade = nLine
+
+# /////////////////////////////////////////////////////////////////////////
+def normalizeConditionalLine(N, iO1, fact1, fact2, exFac2, opcode):
+    global gblEndBlockLst
+    global gblControlCascade
+    compOp = ""
+    opType = ""
+    boolStr = ""
+
+    compOp = getRPG3_ComparisonOp(opcode)
+    opType = opcode[:3]
+
+    # setup main boolean statement
+    if compOp == "":
+        boolStr = exFac2.strip()
+    else:
+        boolStr = "{0} {1} {2}".format(fact1, compOp, fact2)
+
+    # combine the conditinal line to boolean statement
+    if N == "":
+        boolStr = "*in{0} = *On and {1}".format(iO1, boolStr)
+    else:
+        boolStr = "*in{0} = *Off and {1}".format(iO1, boolStr)
+
+    # produce the output array
+    if opType == "DOW" or opType == "DOU":
+        gblEndBlockLst.append("enddo;")
+        return [opType, boolStr]
+    else:
+        gblEndBlockLst.append("endif;")
+        return ["IF", boolStr]
 
 # /////////////////////////////////////////////////////////////////////////
 def cLineBreaker(line):
@@ -406,10 +496,17 @@ def cLineBreaker(line):
     global gblDataDivision
     global gblInLineDeclare
     global gblEndBlockLst
+    global gblDS_StartCnt
     setLineControl = ""
     controlNtoConst = ""
     lin = line.strip()
     ret = []
+    boolOp = {"AN":"And", "OR":"Or"}
+    chopOP = ""
+
+    # line is a comment return it
+    if "*" in line[0:2]:
+        return [line]
 
     # main instruction operations ( factors )
     Opcode = lin[20: 30].strip()
@@ -437,6 +534,16 @@ def cLineBreaker(line):
     else:
         controlNtoConst = "*Off"
 
+    # check if there is cascade control line
+    if Opcode == "" and iO1 != "":
+        appendToCascade(L0, N, iO1)
+
+    # when conditional line has a control op-code re-write to include condition
+    chopOP = Opcode[0:3]
+    if iO1 != "" and chopOP in ["IF", "IFE","IFN","IFG","IFL","DOU","DOW"]:
+        return normalizeConditionalLine(N, iO1, fact1, fact2, lin[30:], Opcode)
+
+
     # handle do blocks
     if Opcode == "DO":
         if (N != "" or iO1 != "" or L0 != "") and (fact2 == "" and result == ""):
@@ -447,7 +554,7 @@ def cLineBreaker(line):
                 else:
                     return ["IF", "*in{0} = *Off".format(iO1)]
             else:
-                return ["IF", "*in{0} = *On".format(L0)]
+                return ["IF", "{1} *in{0} = *On".format(iO1, boolOp[L0])]
         else:
             gblEndBlockLst.append("endfor;")
             if fact2 != "" and result != "":
@@ -459,6 +566,7 @@ def cLineBreaker(line):
     if "IF" in Opcode:
         gblEndBlockLst.append("endif;")
     else:
+        # get all doo loops but not the DO BLock
         if "DO" in Opcode and Opcode != "DO":
             gblEndBlockLst.append("enddo;")
         else:
@@ -487,13 +595,20 @@ def cLineBreaker(line):
                 else:
                     setLineControl = "Or"
             if N != "":
-                setLineControl = "IF {1} *in{0} = {2}; // this needs to be combined".format(iO1, setLineControl,controlNtoConst)
+                #setLineControl = "IF {1} *in{0} = {2}; // this needs to be combined".format(iO1, setLineControl,controlNtoConst)
+                setLineControl = "IF {1} *in{0} = {2};".format(iO1, setLineControl,controlNtoConst)
             else:
-                setLineControl = "IF {1} *in{0} = {2}; // this needs to be combined".format(iO1, setLineControl, controlNtoConst)
+                #setLineControl = "IF {1} *in{0} = {2}; // this needs to be combined".format(iO1, setLineControl, controlNtoConst)
+                setLineControl = "IF {1} *in{0} = {2};".format(iO1, setLineControl, controlNtoConst)
 
     # handle inline declaration
     if Len != "" or d != "":
         if (result in gblInLineDeclare) == False:
+            # add end data-structure if one is needed
+            if gblDS_StartCnt > 0:
+                gblDataDivision += "End-Ds;\n"
+                gblDS_StartCnt -= 1
+
             # save varialbe name to prevent redeclaration
             gblInLineDeclare.append(result)
 
@@ -518,11 +633,17 @@ def cLineBreaker(line):
 def dLineBreaker(line):
     #DName+++++++++++ETDsFrom+++To/L+++IDc.Keywords+++++++++++++++++++++++++ 
     global gblTmp
+    global gblDS_StartCnt
     setLineControl = ""
     controlNtoConst = ""
     lin = line.strip()
     decloration = ""
     ret = []
+    
+    # line is a comment return it
+    if lin[1] == "*":
+        ret.append(lin)
+        return ret
 
     lin = line.upper().strip()
     varName = lin[1: 16].strip()
@@ -543,6 +664,7 @@ def dLineBreaker(line):
         else:
             if fildTyp == "DS":
                 decloration = "Dcl-Ds"
+                gblDS_StartCnt += 1
 
                 if strucTy != "":
                     if strucTy == "U":
@@ -607,6 +729,11 @@ def fLineBreaker(line):
     ret = []
     accLib = {"I":"usage(*input)", "O":"usage(*output)", "U":"usage(*update)", "C":"usage(*input: *update: *output)"}
 
+    # line is a comment return it
+    if line[1] == "*":
+        ret.append(line)
+        return ret
+
     fileName = line[1: 11].strip()
     acc = line[11:12].strip()
     keywords = line[38: 74].strip()
@@ -631,6 +758,10 @@ def pLineBreaker(line):
     line = line.upper()
     proName = ""
     startEnd = ""
+    
+    # line is a comment return it
+    if line[1] == "*":
+        return ['// ' + line]
 
     proName = line[1: 16].strip()
     startEnd = line[18: 21].strip()
@@ -659,9 +790,12 @@ def cComposer(itmArr, originalLine):
     if len(itmArr) == 0:
         return
 
-    # arry contains a RPG line 
+    # arry contains the original RPG line 
     if len(itmArr) == 1:
-        outputLine += itmArr[0]
+        if "*" in (itmArr[0])[0:2]:
+            gblProcedureDivision += itmArr[0] + "\n"
+        print(outputLine.rstrip())
+        return
 
     if "IF " in itmArr[0]:
         outputLine += "{0}\n{1}    ".format(itmArr[0], gblIndent)
@@ -702,6 +836,8 @@ def cComposer(itmArr, originalLine):
         outputLine += "leave;\n"
     if itmArr[0] == "CLEAR":
         outputLine += "clear {0};\n".format(itmArr[1])
+    if itmArr[0] == "CHECK" or itmArr[0] == "CHECKR":
+        outputLine += normalizeCheckR(itmArr[0], itmArr[1], itmArr[2], itmArr[3], itmArr[6])
     if itmArr[0] == "WHENEQ" or itmArr[0] == "WHENNE" or itmArr[0] == "WHENLE" or itmArr[0] == "WHEGE" or itmArr[0] == "WHENLT" or itmArr[0] == "WHENGT":
         outputLine += "when {0} {1} {2};\n".format(itmArr[2], getRPG3_ComparisonOp(itmArr[0]), itmArr[3])
     if itmArr[0] == "SCAN":
@@ -814,6 +950,8 @@ def cComposer(itmArr, originalLine):
         outputLine += "SORTA {0};\n".format(itmArr[3])
     if "TEST" in itmArr[0]:
         outputLine += normalizeTestOp(itmArr[0], itmArr[1], itmArr[2], itmArr[5])
+    if "DEFINE" in itmArr[0]:
+        outputLine += normalizeDefine(itmArr[1], itmArr[2], itmArr[3])
     
     if OnConditinalLine == True:
         outputLine += "{0}ENDIF;\n".format(gblIndent)
@@ -829,7 +967,11 @@ def cComposer(itmArr, originalLine):
     else:
         # add Indent when needed
         if doIgnoreIndent == False:
-            outputLine = gblIndent + outputLine
+            # remove indent on else line
+            if "ELSE;" in outputLine:
+                outputLine = gblIndent[4:] + outputLine
+            else:
+                outputLine = gblIndent + outputLine
 
     #add line to output program
     gblProcedureDivision += outputLine
@@ -845,6 +987,12 @@ def fComposer(itmArr):
     outline = ""
 
     # [fileName, access, keywords]
+
+    # not enough items in array dont do anything
+    if len(itmArr) < 3:
+        if (itmArr[0])[1] == "*":
+            gblFileDivision += itmArr[0] + "\n"
+        return
 
     if itmArr[0] != "" and itmArr[1] != "" and itmArr[2] != "":
         outline += "Dcl-f {0} {1} {2};\n".format(itmArr[0], itmArr[1], itmArr[2])
@@ -866,12 +1014,19 @@ def dComposer(itmArr, onProcedureBlock):
     global gblDataDivision
     global gblProcedureDivision
     global gblTmp
+    global gblDS_StartCnt
     from_ = 0
     vsize = 0
     outputLine = ""
     keywrd = ""
     
     # [varName, numFrom, varType, varSize, decSize, keywords, "*"]
+
+    # not enough items in array dont do anything
+    if len(itmArr) == 1:
+        if (itmArr[0])[1] == "*":
+            gblProcedureDivision += itmArr[0] + "\n"
+        return
 
     # convert [From] and [Variable size] to inategers
     # but only for datastructure variables
@@ -889,6 +1044,7 @@ def dComposer(itmArr, onProcedureBlock):
     if itmArr[0] == "Dcl-s" or itmArr[0] == "Dcl-c":
         if gblTmp == "#":
             outputLine += "End-Ds;\n"
+            gblDS_StartCnt -= 1
             gblTmp = ""
 
         # apply keywords
@@ -915,6 +1071,7 @@ def dComposer(itmArr, onProcedureBlock):
             # add a end-ds before adding a delaration
             if gblTmp == "#":
                 outputLine += "End-Ds;\n"
+                gblDS_StartCnt -= 1
 
             # set flag that indicates datastruct declaratrion
             gblTmp = "#"
@@ -954,63 +1111,96 @@ def rectifier(lines):
     global gblDataDivision
     global gblProcedureDivision
     global gblSQLBlock
+    global gblDS_StartCnt
     spec = ""
     Espec = ""
     Ospec = ""
     ret = ""
     arr = []
     onProc = False
+    curSpec = "H"
+    specTsl = {"H":1,
+               "F":2,
+               "D":3,
+               "I":4,
+               "C":5,
+               "O":6,
+               "P":7,
+               "_":0}
+    specTsl2 = {"D":2,
+                "C":3,
+                "P":1,
+                "_":0}
+    curTsl = specTsl
 
     for lin in lines:
         lin = lin.strip().upper()
 
-        spec = lin[0: 1]
+        spec = lin[0: 1].strip()
 
         # do nothing on these conditions
         if len(lin) < 2:
             continue
-        if lin[1] == "*":
+        if spec == "":
             continue
 
+        # ensure proper spec ordering
+        # check if spec is in translator dictionary
+        if spec in curTsl:
+            # if spec is a P swap dictionarys and continue
+            if spec == "P":
+                curTsl = specTsl2
+            else:
+                #check spec order
+                if curTsl[curSpec] <= curTsl[spec]:
+                    curSpec = spec
+                else:
+                    curSpec = "_"
+
         # perform spec operations
-        if spec == "C":
+        if curSpec == "C":
             arr = cLineBreaker(lin)
             #print(arr)
             cComposer(arr, lin)
         else:
-            if spec == "D":
+            if curSpec == "D":
                 arr = dLineBreaker(lin)
                 #print(arr)
                 dComposer(arr, onProc)
             else:
-                if spec == "F":
+                if curSpec == "F":
                     arr = fLineBreaker(lin)
                     fComposer(arr)
                 else:
-                    if spec == "H":
+                    if curSpec == "H":
                         gblFileDivision += "Ctl-Opt " + lin[1:].strip() + ";\n"
                     else:
-                        if spec == "P":
+                        if curSpec == "P":
                             onProc = True
                             arr = pLineBreaker(lin)
                             pComposer(arr, lin)
                         else:
                             gblProcedureDivision += lin + "\n"
                 
-    
-    # combine RPG divisions into final program
-    ret = ("**free\nCtl-Opt DFTACTGRP(*No);\n" + 
-          gblFileDivision + 
+    # add end data-structure if one is needed
+    if gblDS_StartCnt > 0:
+        gblDataDivision += "End-Ds;\n"
+
+    # combine RPG divisions into one program
+    ret = (gblFileDivision + 
           gblDataDivision + 
           gblProcedureDivision)
 
-    # final cleanup section
-    # replace any rpg style comments to C style comments
-    if "\n*" in ret:
-        ret = ret.replace("\n*","\n//")
+    # clean up any OrXX/AndXX and leftover RPG comment
+    ret = re.sub("([\n|\r][H|F|D|I|C|O|\s]?)([*]in)", "\n~in", ret)
+    ret = re.sub("([\n|\r][H|F|D|I|C|O|\s]?)[*]", "\n//", ret)
+    ret = re.sub("([\n|\r][H|F|D|I|C|O|\s]?)([~]in)", "\n*in", ret)
+    ret = re.sub("(?i)([;][\n|\r]\s*endif[;][\n|\r]\s*if[\s](and))", " And", ret)
+    ret = re.sub("(?i)([;][\n|\r]\s*endif[;][\n|\r]\s*if[\s](or))", " Or", ret)
 
-        # fix any indicators that where commented by mistake
-        ret = ret.replace("\n//IN","\n*in")
+    # add starting line to program
+    ret = ("**free\nCtl-Opt DFTACTGRP(*No);\n" + 
+          ret)
 
     return ret
 
