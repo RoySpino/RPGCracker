@@ -842,7 +842,11 @@ def cComposer(itmArr, originalLine):
         outputLine += "when {0} {1} {2};\n".format(itmArr[2], getRPG3_ComparisonOp(itmArr[0]), itmArr[3])
     if itmArr[0] == "SCAN":
         if len(itmArr[1]) == 0:
-            outputLine += "%Scan({0}: {1}));  // use %found() to check if string was found\n".format(itmArr[2], itmArr[3])
+            outputLine += "%Scan({0}: {1}));\n".format(itmArr[2], itmArr[3])
+            if itmArr[5] != "":
+                outputLine += "*in{0} = %error();\n".format(itmArr[5])
+            if itmArr[6] != "":
+                outputLine = "*in{0} = %found();".format(itmArr[6])
         else:
             outputLine += "{2} = %Scan({0}: {1});\n".format(itmArr[2], itmArr[3], itmArr[1])
     if itmArr[0] == "EXFMT":
@@ -860,9 +864,9 @@ def cComposer(itmArr, originalLine):
             else:
                 outputLine += "*in{2} = %Bitand({0}: {1}) <> x'00' and  %Bitand({0}: {1}) <> {1};\n".format(itmArr[1], itmArr[3], itmArr[5])
     if itmArr[0] == "ANDEQ" or itmArr[0] == "ANDNE" or itmArr[0] == "ANDLT" or itmArr[0] == "ANDLE" or itmArr[0] == "ANDGT" or itmArr[0] == "ANDGE":
-        outputLine += "and {0} {2} {1} // this is apart of the if/loop block\n".format(itmArr[2], itmArr[3], getRPG3_ComparisonOp(itmArr[0]))
+        outputLine += "and {0} {2} {1}\n".format(itmArr[2], itmArr[3], getRPG3_ComparisonOp(itmArr[0]))
     if itmArr[0] == "OREQ" or itmArr[0] == "ORNE" or itmArr[0] == "ORLT" or itmArr[0] == "ORLE" or itmArr[0] == "ORGT" or itmArr[0] == "ORGE":
-        outputLine += "or {0} {2} {1} // this is apart of the if/loop block\n".format(itmArr[2], itmArr[3], getRPG3_ComparisonOp(itmArr[0]))
+        outputLine += "or {0} {2} {1}\n".format(itmArr[2], itmArr[3], getRPG3_ComparisonOp(itmArr[0]))
     if itmArr[0] == "SUBDUR" or itmArr[0] == "ADDDUR":
         outputLine += subAddDurTranslate(itmArr[0], itmArr[2], itmArr[3], itmArr[1])
     if itmArr[0] == "CAT":
@@ -1195,8 +1199,8 @@ def rectifier(lines):
     ret = re.sub("([\n|\r][H|F|D|I|C|O|\s]?)([*]in)", "\n~in", ret)
     ret = re.sub("([\n|\r][H|F|D|I|C|O|\s]?)[*]", "\n//", ret)
     ret = re.sub("([\n|\r][H|F|D|I|C|O|\s]?)([~]in)", "\n*in", ret)
-    ret = re.sub("(?i)([;][\n|\r]\s*endif[;][\n|\r]\s*if[\s](and))", " And", ret)
-    ret = re.sub("(?i)([;][\n|\r]\s*endif[;][\n|\r]\s*if[\s](or))", " Or", ret)
+    ret = re.sub("(;?([\\n|\\r]|)\s*(and|And|AND)\\b)", " And", ret)
+    ret = re.sub("(;?([\\n|\\r]|)\s*(or|Or|OR)\\b)", " Or", ret)
 
     # add starting line to program
     ret = ("**free\nCtl-Opt DFTACTGRP(*No);\n" + 
