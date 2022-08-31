@@ -1306,7 +1306,7 @@ def setup(lines):
     return lines
 
 # /////////////////////////////////////////////////////////////////////////
-def Main():
+def obs_main():
     global gblProgramName
     fName =""
 
@@ -1334,5 +1334,5 @@ def Main():
         write(fname, out)
 
 # /////////////////////////////////////////////////////////////////////////
-if __name__ == "__main__":
-    Main()
+# obsolete main
+obs_main()
