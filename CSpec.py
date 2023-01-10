@@ -285,7 +285,7 @@ class C_Composer:
             doAddIndent = True
         if itmArr[0] == "ENDIF" or itmArr[0] == "ENDDO" or itmArr[0] == "ENDFOR" or itmArr[0] == "ENDSL" or itmArr[0] == "SELECT" or itmArr[0] == "OTHER":
             outputLine += "{0};\n".format(itmArr[0])
-            if itmArr[0] == "ENDIF" or itmArr[0] == "ENDDO" or itmArr[0] == "ENDFOR" or itmArr[0] == "ENDSL":
+            if (itmArr[0] != "SELECT" or itmArr[0] != "OTHER") and len(self.gblEndBlockLst) > 0:
                 self.gblEndBlockLst.pop(len(self.gblEndBlockLst)-1)
         if "CHAIN" in itmArr[0]:
             outputLine += self.normalize_File_Find(itmArr[0], itmArr[2], itmArr[3], itmArr[4], itmArr[5])
