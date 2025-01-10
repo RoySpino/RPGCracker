@@ -1,3 +1,5 @@
+import re 
+
 class F_Composer:
     gblFileDivision = ""
     gblDataDivision = ""
@@ -12,6 +14,7 @@ class F_Composer:
     gblMVRStr = ""
     gblGOTOLst = []
     gblEndBlockLst = []
+    gblKeywordList = []
 
     def fComposer(self, line:str) -> str:
         outline = ""
@@ -34,6 +37,20 @@ class F_Composer:
         
         print(outline.rstrip())
         return outline
+    
+    # /////////////////////////////////////////////////////////////////////////
+    def keywordGenerator(self):
+        return " ".join(self.gblKeywordList)
+    
+    # /////////////////////////////////////////////////////////////////////////
+    def setKeywords(self, words):
+        wds = words.strip()
+
+        if len(wds) == 0:
+            self.gblKeywordList = []
+        else:
+            wds = re.sub(r"\s+", " ", wds)
+            self.gblKeywordList = wds.split(" ")
 
     # /////////////////////////////////////////////////////////////////////////
     def fLineBreaker(self, line):
@@ -48,19 +65,37 @@ class F_Composer:
 
         fileName = line[1: 11].strip()
         acc = line[11:12].strip()
+        fdesg = line[12:13].strip()
+        fadd = line[14:15].strip()
+        keyed = line[28:29].strip()
         keywords = line[38: 74].strip()
         divice = line[30: 37].strip()
 
+        # setup keyword array
+        self.setKeywords(keywords)
+
         # display file given do not apply access
         if "WORKSTN" in divice or "PRINTER" in divice:
-            divice += " " + (keywords).strip()
+            divice += " " + self.keywordGenerator()
             return [fileName, "", divice]
         else:
             #apply file acces 
-            if acc in accLib :
-                access = accLib[acc]
+            if fadd != "":
+                if acc == "U":
+                    access = "usage(*input: *update: *output)"
+                else:
+                    access = "usage(*input: *output)"
             else:
-                access = ""
+                if acc in accLib :
+                    access = accLib[acc]
+                else:
+                    access = ""
 
+        # apply [keyed] to file access
+        if keyed != "":
+            self.gblKeywordList  = ["Keyed"] + self.gblKeywordList
+            keywords = self.keywordGenerator()
+
+        # create string and return
         ret = [fileName, access, keywords]
         return ret
