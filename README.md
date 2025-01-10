@@ -7,10 +7,8 @@ Version 2: code is now object oriented to better convert programmer defined proc
 
 ___
 # Op-codes to look out for
-* GOTO
-GOTO op codes appear in code as a right justified structured line. This is done because the goto opcode is not suported in free-format RPG
-* MOVEL
-MOVEL op codes appear in code as a right justified structured line. Because MoveL can be used with strings and numbers programmer imput will be needed to decide how best to handl this instruction. This may change in the future
+* GOTO - GOTO op codes appear in code as a right justified structured line. This is done because the goto opcode is not suported in free-format RPG
+* MOVEL - MOVEL op codes appear in code as a right justified structured line. Because MoveL can be used with strings and numbers programmer imput will be needed to decide how best to handl this instruction. This may change in the future
 
 ___
 ### Code useage:
