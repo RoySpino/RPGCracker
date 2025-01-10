@@ -4,41 +4,47 @@ from CSpec import C_Composer
 from DSpec import D_Composer
 
 class P_Composer:
-    hasEnded = False
+    hasEnded = True
     SpecC = NULL
     SpecD = NULL
-    loclProcedureDivision:str = ""
+    localDataDivision:str = ""
     localProcedureDivision:str = ""
-    output:str = ""
+    procName:str = ""
     
     def __init__(self, CSpecOBJ, DSpecOBJ):
         self.SpecC = CSpecOBJ
-        self.SpecD = DSpecOBJ
+        self.SpecD = D_Composer(DSpecOBJ)
 
     # /////////////////////////////////////////////////////////////////////////
-    def pComposer(self, line:str) -> str:
-        itmArr = self.pLineBreaker(line)
+    def pComposer(self, line:str):
+        linetype = line[0].upper()
 
-        return "{0} {1};\n".format(itmArr[0], itmArr[1])
+        if linetype == "P":
+            self.pLineBreaker(line)
+        else:
+            self.rectifyLine(line)
 
     # /////////////////////////////////////////////////////////////////////////
-    def pLineBreaker(self, line):
-        line = line.upper()
+    def pLineBreaker(self, line) -> str:
+        line = (line.upper()).ljust(20)
         proName = ""
         startEnd = ""
 
         proName = line[1: 16].strip()
         startEnd = line[18: 21].strip()
 
-        if startEnd == "B":
-            self.hasEnded = False
-            startEnd = "\n// /////////////////////////////////////////////////////////////////////////\nDcl-Proc "
-            self.output += startEnd + proName
-        else:
-            startEnd = "End-Proc"
-            self.hasEnded = True
+        if startEnd == "B" or startEnd == "E":
+            if startEnd == "B":
+                startEnd = f"\n// {('/'*55)}\nDcl-Proc {proName};"
+                self.procName = startEnd
+                self.hasEnded = False
+        
+                self.SpecD.resetGlobals()
+                self.SpecD.addIndent()
+            else:
+                self.hasEnded = True
 
-        return
+        return startEnd
         
     # /////////////////////////////////////////////////////////////////////////
     def rectifyLine(self, lin:str):
@@ -53,15 +59,14 @@ class P_Composer:
             return ""
         if lin[1] == "*":
             return ""
-            
 
         # perform spec operations
         if spec == "C":
-            self.localProcedureDivision += self.SpecC.cComposer(lin)
+            self.localProcedureDivision += "    " + self.SpecC.cComposer(lin)
         else:
             if spec == "D":
                 val = self.SpecD.dComposer(lin)
-                self.loclProcedureDivision += val
+                self.localDataDivision += val
             else:
                 # return a comment line
                 if lin[0] == "*":
@@ -74,8 +79,16 @@ class P_Composer:
     def getProcedure(self) -> str:
         ret:str = ""
 
-        ret = "{0}\n{1}\n{2}\nEnd-Proc;".format(self.output, 
-                                                self.loclProcedureDivision, 
+        # print(f"<{self.procName}>")
+        # print(f"[{self.localDataDivision}]")
+        # print(f">{self.localProcedureDivision}<")
+
+        # check for unclosed data structures
+        if self.SpecD.checkForUnclosedDataStruct() == True:
+            self.localDataDivision = self.localDataDivision + self.SpecD.getClosingDclBlock()
+
+        ret = "{0}\n{1}\n{2}End-Proc;".format(self.procName, 
+                                                self.localDataDivision, 
                                                 self.localProcedureDivision)
         return ret
 
