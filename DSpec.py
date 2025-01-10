@@ -6,14 +6,45 @@ class D_Composer:
     gblProgramName = ""
     gblSQLBlock = {"": ""}
     gblMVRStr = ""
+    gblDeclareBlock = ""
     gblGOTOLst = []
     gblEndBlockLst = []
     inDataStruct:bool = False
     onStandAlone:bool = False
+    gblDSConst = {
+        "FILE"   : "*FILE",
+        "STATUS" : "*STATUS",
+        "OPCODE" : "*OPCODE",
+        "ROUTIN" : "*ROUTIN",
+        "RECORD" : "*RECORD",
+        "SIZE"   : "*SIZE",
+        "PROC"   : "*PROC",
+        "STATUS" : "*STATUS"}
+    gblRetType = {
+        "Time"   : "Time",
+        "Date" : "Date",
+        "Ind" : "Ind",
+        "Packed" : "Packed({0}: {1})",
+        "TimeStamp" : "TimeStamp",
+        "Zoned"   : "Zoned({0}: {1})",
+        "Int"   : "Int({0})",
+        "Float" : "Float({0})",
+        "Uns" : "Uns({0})"}
+
+    def __init__(self, lDspec = None):
+        if (lDspec is None) == False:
+            self.gblIndent       = lDspec.gblIndent
+            self.gblProgramName  = lDspec.gblProgramName
+            self.gblSQLBlock     = lDspec.gblSQLBlock
+            self.gblMVRStr       = lDspec.gblMVRStr
+            self.gblDeclareBlock = lDspec.gblDeclareBlock
+            self.gblEndBlockLst  = lDspec.gblEndBlockLst
+            self.inDataStruct    = lDspec.inDataStruct
+            self.onStandAlone    = lDspec.onStandAlone
+
 
     # /////////////////////////////////////////////////////////////////////////
     def dComposer(self, line:str) -> str:
-        self.gblTmp
         from_ = 0
         vsize = 0
         outputLine = ""
@@ -21,7 +52,6 @@ class D_Composer:
         
         itmArr = self.dLineBreaker(line)
         itmArr[5] = " " + itmArr[5]
-
         # [varName, numFrom, varType, varSize, decSize, keywords, "*"]
 
         if "OVERLAY" in itmArr[5]:
@@ -29,7 +59,7 @@ class D_Composer:
 
         # convert [From] and [Variable size] to inategers
         # but only for datastructure variables
-        if (["Dcl-s","Dcl-c","Dcl-Ds"]).count(itmArr[0]) == 0:
+        if (["Dcl-s","Dcl-c","Dcl-Ds","Dcl-Pi","Dcl-Pr"]).count(itmArr[0]) == 0:
             if itmArr[1].isnumeric() == True:
                 from_ = int(itmArr[1])
             else:
@@ -61,51 +91,106 @@ class D_Composer:
                 else:
                     outputLine += "{0} {1} {2}({3}){4};\n".format(itmArr[0],itmArr[1],itmArr[2],itmArr[3], keywrd)
         else:
-            #setup data structures 
+            #setup data structures / declareative blocks
             self.onStandAlone = False
             self.inDataStruct = True
             if "Dcl-Ds" in itmArr[0]:
-                #check to see if the datastructure is a program/dataArea/file status data structure
-                if itmArr[0] != "Dcl-Ds":
-                    tarr = itmArr[0].split(" ")
-                    itmArr[0] = tarr[0]
-                    
-                # at end of old data structure and start of new one
-                # add a end-ds before adding a delaration
-                if self.gblTmp == "#":
-                    outputLine += "End-Ds;\n"
+                outputLine += self.setDatarationBlocks("Ds", itmArr)
+                ##check to see if the datastructure is a program/dataArea/file status data structure
+                #if itmArr[0] != "Dcl-Ds":
+                #    tarr = itmArr[0].split(" ")
+                #    itmArr[0] = tarr[0]
+                #    
+                ## at end of old data structure and start of new one
+                ## add a end-ds before adding a delaration
+                #if self.gblTmp == "#":
+                #    outputLine += "End-Ds;\n"
 
-                # set flag that indicates datastruct declaratrion
-                self.gblTmp = "#"
-                
-                # set datastructure name
-                if itmArr[1] == "":
-                    outputLine += "Dcl-ds *n{0};\n".format(itmArr[5])
+                ## set flag that indicates datastruct declaratrion
+                #self.gblTmp = "#"
+                #
+                ## set datastructure name
+                #if itmArr[1] == "":
+                #    outputLine += (f"Dcl-ds *n {itmArr[5]}").strip() +";\n"
+                #else:
+                #    outputLine += ("Dcl-ds {itmArr[1]} {itmArr[5]}").strip() +";\n"
+            else:
+                if "Dcl-Pr" in itmArr[0]:
+                    outputLine += self.setDatarationBlocks("Pr", itmArr)
                 else:
-                    outputLine += "Dcl-ds {0}{1};\n".format(itmArr[1], itmArr[5])
+                    if "Dcl-Pi" in itmArr[0]:
+                        outputLine += self.setDatarationBlocks("Pi", itmArr)
 
-            # setup fields for data structure
-            if itmArr[6] == "*":
-                LENGTH = abs(vsize - from_) + 1
-
-                if "pos" in itmArr[5]:
-                    if itmArr[2] == "CHAR":
-                        outputLine += "    {0} Char({1}) {2};\n".format(itmArr[0], LENGTH, itmArr[5])
-                    if itmArr[2] == "ZONED":
-                        outputLine += "    {0} Zoned({1}: {2}) {3};\n".format(itmArr[0], LENGTH, itmArr[4], itmArr[5])
-                    if itmArr[2] == "":
-                        outputLine += "    {0} {2} {3};\n".format(itmArr[0], itmArr[1], itmArr[5])
-                else:
-                    if itmArr[2] == "CHAR":
-                        outputLine += "    {0} Char({2}) pos({1}){3};\n".format(itmArr[0], itmArr[1], LENGTH, itmArr[5])
-                    if itmArr[2] == "ZONED":
-                        outputLine += "    {0} Zoned({2}: {3}) pos({1}){4};\n".format(itmArr[0], itmArr[1], LENGTH, itmArr[4], itmArr[5])
-                    if itmArr[2] == "":
-                        outputLine += "    {0} {1}{2};\n".format(itmArr[0], itmArr[1], itmArr[5])
             
+
+        # setup fields for data structure
+        if itmArr[6] == "*" and self.onStandAlone == False:
+            LENGTH = abs(vsize - from_) + 1
+
+            # check if the item is a known datastructure position
+            # this value does not need a POS key word
+            if itmArr[1] in self.gblDSConst.keys():
+                outputLine += "    {0} {1};\n".format(itmArr[0], self.gblDSConst[itmArr[1]])
+            else:
+                itmArr[2] = itmArr[2].upper()
+                
+                # setup PR/ PI blocks
+                if itmArr[1] == "":
+                    if itmArr[2] == "CHAR":
+                        outputLine += f"    {itmArr[0]} Char({LENGTH}) {itmArr[5]}"
+                    if itmArr[2] == "ZONED":
+                        outputLine += f"    {itmArr[0]} Zoned({LENGTH}: {itmArr[4]}) {itmArr[5]}"
+                    if itmArr[2] == "":
+                        outputLine += f"    {itmArr[0]} {itmArr[1]} {itmArr[5]}"
+                else:
+                    # setup Data structurs
+                    if itmArr[2] == "CHAR":
+                        outputLine += f"    {itmArr[0]} Char({LENGTH}) pos({itmArr[1]}) {itmArr[5]}"
+                    if itmArr[2] == "ZONED":
+                        outputLine += f"    {itmArr[0]} Zoned({LENGTH}: {itmArr[4]}) pos({itmArr[1]}) {itmArr[5]}"
+                    if itmArr[2] == "":
+                        outputLine += f"    {itmArr[0]} {itmArr[1]} {itmArr[5]}"
+                outputLine = f"    {outputLine.strip()};\n"
+                
         # write to data/ procedure division
-        #print(outputLine.rstrip())
-        return outputLine
+        # print(outputLine.rstrip())
+        #print(line.rstrip())
+        return (self.gblIndent + outputLine)
+
+    # /////////////////////////////////////////////////////////////////////////
+    def setDatarationBlocks(self, btype, itmArr) -> str:
+        ret = ""
+        returnType = ""
+
+        #check to see if the datastructure is a program/dataArea/file status data structure
+        if itmArr[0] != f"Dcl-{btype}":
+            tarr = itmArr[0].split(" ")
+            itmArr[0] = tarr[0]
+            
+        # at end of old data structure and start of new one
+        # add a end before adding a delaration 
+        # remove end statement from the list
+        if self.gblTmp == "#":
+            self.gblEndBlockLst.pop()
+            ret += f"End-{btype};\n"
+
+        # set flag that indicates datastruct declaratrion
+        self.gblTmp = "#"
+        
+        # set return type
+        if btype != "Ds":
+            returnType = self.gblRetType[itmArr[2]]
+            returnType = returnType.format(itmArr[3], itmArr[4])
+
+        # set datastructure name
+        if itmArr[1] == "":
+            ret += (f"Dcl-{btype} *n {returnType}").strip() +";\n"
+        else:
+            ret += ("Dcl-{btype} {itmArr[1]} {itmArr[5]}").strip() +";\n"
+
+        self.gblEndBlockLst.append(f"End-{btype}")
+        self.gblDeclareBlock = btype
+        return ret
 
     # /////////////////////////////////////////////////////////////////////////
     def dLineBreaker(self, line:str):
@@ -155,41 +240,47 @@ class D_Composer:
         # set data type
         if varType == "" or varType == "A":
             if decSize != "":
-                varType = "ZONED"
+                varType = "Zoned"
             else:
                 if "VARYING" in keywords:
-                    varType = "VARCHAR"
+                    varType = "Varchar"
                 else:
-                    varType = "CHAR"
+                    varType = "Char"
         else:
             if varType == "T":
-                varType = "TIME"
+                varType = "Time"
             else:
                 if varType == "D":
-                    varType = "DATE"
+                    varType = "Date"
                 else:
                     if varType == "N":
-                        varType = "IND"
+                        varType = "Ind"
                     else:
                         if varType == "P":
-                            varType = "PACKED"
+                            varType = "Packed"
                         else:
                             if varType == "Z":
-                                varType = "TIMESTAMP"
+                                varType = "TimeStamp"
                             else:
                                 if varType == "S":
-                                    varType = "ZONED"
+                                    varType = "Zoned"
                                 else:
                                     if varType == "I":
-                                        varType = "INT"
+                                        varType = "Int"
                                     else:
                                         if varType == "F":
-                                            varType = "FLOAT"
+                                            varType = "Float"
+                                        else:
+                                            if varType == "U":
+                                                varType = "Uns"
+
                                             
         # setup returning array
+        # return standard variable eclaration
         if decloration != "":
             ret = [decloration, varName, varType, varSize, decSize, keywords, ""]
         else:
+            # return datastruct, prototype, procedure interface bodies
             ret = [varName, numFrom, varType, varSize, decSize, keywords, "*"]
 
         return ret
@@ -197,6 +288,20 @@ class D_Composer:
     # /////////////////////////////////////////////////////////////////////////
     def checkForUnclosedDataStruct(self):
         return self.inDataStruct == True and self.onStandAlone == False
+
+    # /////////////////////////////////////////////////////////////////////////
+    def addIndent(self):
+        self.gblIndent += (" " * 4)
+
+    # /////////////////////////////////////////////////////////////////////////
+    def getClosingDclBlock(self):
+        if len(self.gblEndBlockLst) > 0:
+            # get and remove the end block statment form the list
+            el = self.gblEndBlockLst.pop()
+
+            return f"{self.gblIndent}{el};\n"
+            
+        return ""
 
     # /////////////////////////////////////////////////////////////////////////
     def normalizeOverlay(self, kewrds):
@@ -222,4 +327,19 @@ class D_Composer:
         ret = (re.sub("\s{1,}", " ", ret)).strip()
         
         return ret
+    
+    # /////////////////////////////////////////////////////////////////////////
+    def dataStructConst(self, keyword:str):
+        return False
 
+    # /////////////////////////////////////////////////////////////////////////
+    def resetGlobals(self):
+        self.gblTmp = ""
+        self.gblIndent = ""
+        self.gblProgramName = ""
+        self.gblSQLBlock = {"": ""}
+        self.gblMVRStr = ""
+        self.gblGOTOLst = []
+        self.gblEndBlockLst = []
+        self.inDataStruct:bool = False
+        self.onStandAlone:bool = False
