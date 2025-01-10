@@ -1,6 +1,7 @@
 import linecache
 import sys
 import platform
+import re as reg
 from CSpec import C_Composer
 from DSpec import D_Composer
 from FSpec import F_Composer
@@ -96,13 +97,18 @@ def rectifier(lines):
                 lin = "{1}// {0}\n".format(lin[2:], SpecC.getIndent())
                 gblProcedureDivision += lin
                 continue
+            
+        # handle SPACE
+        if "/SPACE" in lin.upper():
+            gblProcedureDivision += "\n"
+            continue
 
         # On P spec
         if onProc == True:
-            if SpecP.hasEnded == True:
+            SpecP.pComposer(lin)
+
+            if SpecP.isEndOfProc() == True:
                 gblProcedureDivision += SpecP.getProcedure()
-            else:
-                SpecP.pComposer(lin)
                 onProc = False
         else:
             # STANDARD processing without Procedures
@@ -148,11 +154,15 @@ def rectifier(lines):
           gblDataDivision + 
           gblProcedureDivision)
 
+    # collaps or*/and* opcodes
+    ret = reg.sub(r"(;\r\n|;\r|;\n|\r\n|\r|\n)\s*(or|Or)", " Or", ret)
+    ret = reg.sub(r"(;\r\n|;\r|;\n|\r\n|\r|\n)\s*(and|And)", " And", ret)
+
     # final cleanup section
     # replace any rpg style comments to C style comments
     #if "\n*" in ret:
     #    ret = ret.replace("\n*","\n//")
-#
+
     #    # fix any indicators that where commented by mistake
     #    ret = ret.replace("\n//IN","\n*in")
 
@@ -199,6 +209,7 @@ def setup(lines):
         d = (lin[63:65]).strip()
 
 
+        # get sql comands
         if "/EXEC SQL" in first10 or "/END-EXEC" in first10 or "C+" in first3:
             if "/EXEC SQL" in first10:
                 sqlKey = "~{0}".format(sqlLinCnt)
@@ -316,7 +327,7 @@ def Main():
         fname = tarr[len(tarr)-1:][0]
         fname = (fname.split("."))[0]
         gblProgramName = fname
-        fname = "{0}_free.rpg".format(fname)
+        fname = "{0}_free.rpgle".format(fname)
 
         # clear the output file
         clearFile(fname)
